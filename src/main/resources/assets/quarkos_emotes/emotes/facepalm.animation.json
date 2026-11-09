@@ -1,0 +1,103 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.quarkos_emotes.facepalm": {
+      "animation_length": 2.8,
+      "loop": false,
+      "bones": {
+        "right_arm": {
+          "rotation": {
+            "0.0": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "0.12": {"pre": [8, 0, 0], "post": [8, 0, 0], "lerp_mode": "catmullrom"},
+            "0.3": {"pre": [-35, 0, 0], "post": [-35, 0, 0], "lerp_mode": "catmullrom"},
+            "0.5": {"pre": [-100, 0, 0], "post": [-100, 0, 0], "lerp_mode": "catmullrom"},
+            "0.66": {"pre": [-152, 0, 0], "post": [-152, 0, 0], "lerp_mode": "catmullrom"},
+            "0.8": {"pre": [-163, 0, 0], "post": [-163, 0, 0], "lerp_mode": "catmullrom"},
+            "1.0": {"pre": [-160, 0, 0], "post": [-160, 0, 0], "lerp_mode": "catmullrom"},
+            "1.25": {"pre": [-160, 0, 0], "post": [-160, 0, 0], "lerp_mode": "catmullrom"},
+            "1.55": {"pre": [-160, 0, 0], "post": [-160, 0, 0], "lerp_mode": "catmullrom"},
+            "1.85": {"pre": [-156, 0, 0], "post": [-156, 0, 0], "lerp_mode": "catmullrom"},
+            "2.12": {"pre": [-115, 0, 0], "post": [-115, 0, 0], "lerp_mode": "catmullrom"},
+            "2.45": {"pre": [-35, 0, 0], "post": [-35, 0, 0], "lerp_mode": "catmullrom"},
+            "2.8": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"}
+          },
+          "position": {
+            "0.0": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "0.12": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "0.3": {"pre": [0.4, 0, 0], "post": [0.4, 0, 0], "lerp_mode": "catmullrom"},
+            "0.5": {"pre": [1, 0, 0], "post": [1, 0, 0], "lerp_mode": "catmullrom"},
+            "0.66": {"pre": [2, -0.5, 0], "post": [2, -0.5, 0], "lerp_mode": "catmullrom"},
+            "0.8": {"pre": [3, -1, 0], "post": [3, -1, 0], "lerp_mode": "catmullrom"},
+            "1.0": {"pre": [3, -1, 0], "post": [3, -1, 0], "lerp_mode": "catmullrom"},
+            "1.25": {"pre": [3, -1, 0], "post": [3, -1, 0], "lerp_mode": "catmullrom"},
+            "1.55": {"pre": [3, -1, 0], "post": [3, -1, 0], "lerp_mode": "catmullrom"},
+            "1.85": {"pre": [2.8, -1, 0], "post": [2.8, -1, 0], "lerp_mode": "catmullrom"},
+            "2.12": {"pre": [1, -0.5, 0], "post": [1, -0.5, 0], "lerp_mode": "catmullrom"},
+            "2.45": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "2.8": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"}
+          }
+        },
+        "head": {
+          "rotation": {
+            "0.0": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "0.12": {"pre": [-3, 0, 0], "post": [-3, 0, 0], "lerp_mode": "catmullrom"},
+            "0.3": {"pre": [-5, 0, 0], "post": [-5, 0, 0], "lerp_mode": "catmullrom"},
+            "0.5": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "0.66": {"pre": [7, 0, 0], "post": [7, 0, 0], "lerp_mode": "catmullrom"},
+            "0.8": {"pre": [12, 0, 0], "post": [12, 0, 0], "lerp_mode": "catmullrom"},
+            "1.0": {"pre": [15, 0, 0], "post": [15, 0, 0], "lerp_mode": "catmullrom"},
+            "1.25": {"pre": [17, 0, 0], "post": [17, 0, 0], "lerp_mode": "catmullrom"},
+            "1.55": {"pre": [18, 0, 0], "post": [18, 0, 0], "lerp_mode": "catmullrom"},
+            "1.85": {"pre": [17, 0, 0], "post": [17, 0, 0], "lerp_mode": "catmullrom"},
+            "2.12": {"pre": [12, 0, 0], "post": [12, 0, 0], "lerp_mode": "catmullrom"},
+            "2.45": {"pre": [4, 0, 0], "post": [4, 0, 0], "lerp_mode": "catmullrom"},
+            "2.8": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"}
+          }
+        },
+        "body": {
+          "rotation": {
+            "0.0": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "0.12": {"pre": [-2, 0, 0], "post": [-2, 0, 0], "lerp_mode": "catmullrom"},
+            "0.3": {"pre": [-3, 0, 0], "post": [-3, 0, 0], "lerp_mode": "catmullrom"},
+            "0.5": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "0.66": {"pre": [3, 0, 0], "post": [3, 0, 0], "lerp_mode": "catmullrom"},
+            "0.8": {"pre": [5, 0, 0], "post": [5, 0, 0], "lerp_mode": "catmullrom"},
+            "1.0": {"pre": [7, 0, 0], "post": [7, 0, 0], "lerp_mode": "catmullrom"},
+            "1.25": {"pre": [8, 0, 0], "post": [8, 0, 0], "lerp_mode": "catmullrom"},
+            "1.55": {"pre": [9, 0, 0], "post": [9, 0, 0], "lerp_mode": "catmullrom"},
+            "1.85": {"pre": [8, 0, 0], "post": [8, 0, 0], "lerp_mode": "catmullrom"},
+            "2.12": {"pre": [6, 0, 0], "post": [6, 0, 0], "lerp_mode": "catmullrom"},
+            "2.45": {"pre": [2, 0, 0], "post": [2, 0, 0], "lerp_mode": "catmullrom"},
+            "2.8": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"}
+          }
+        },
+        "left_arm": {
+          "rotation": {
+            "0.0": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"},
+            "0.12": {"pre": [2, 0, 0], "post": [2, 0, 0], "lerp_mode": "catmullrom"},
+            "0.3": {"pre": [4, 0, 0], "post": [4, 0, 0], "lerp_mode": "catmullrom"},
+            "0.5": {"pre": [5, 0, 0], "post": [5, 0, 0], "lerp_mode": "catmullrom"},
+            "0.66": {"pre": [3, 0, 0], "post": [3, 0, 0], "lerp_mode": "catmullrom"},
+            "0.8": {"pre": [1, 0, 0], "post": [1, 0, 0], "lerp_mode": "catmullrom"},
+            "1.0": {"pre": [-2, 0, 0], "post": [-2, 0, 0], "lerp_mode": "catmullrom"},
+            "1.25": {"pre": [-4, 0, 0], "post": [-4, 0, 0], "lerp_mode": "catmullrom"},
+            "1.55": {"pre": [-5, 0, 0], "post": [-5, 0, 0], "lerp_mode": "catmullrom"},
+            "1.85": {"pre": [-4, 0, 0], "post": [-4, 0, 0], "lerp_mode": "catmullrom"},
+            "2.12": {"pre": [-2, 0, 0], "post": [-2, 0, 0], "lerp_mode": "catmullrom"},
+            "2.45": {"pre": [1, 0, 0], "post": [1, 0, 0], "lerp_mode": "catmullrom"},
+            "2.8": {"pre": [0, 0, 0], "post": [0, 0, 0], "lerp_mode": "catmullrom"}
+          }
+        }
+      }
+    }
+  },
+  "quarkos": {
+    "id": "quarkos_emotes:facepalm",
+    "name": "emote.quarkos_emotes.facepalm",
+    "icon": "minecraft:carved_pumpkin",
+    "category": "reaction",
+    "cancel_on_move": true,
+    "easing": "ease_in_out",
+    "notes": "Palm overlaps the lower forehead using right-arm X near -160 and a small inward offset. The head drops after contact; shoulders follow later."
+  }
+}
