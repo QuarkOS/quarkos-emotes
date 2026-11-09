@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.quarkos.emotes.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ClientTickMixin",
+    "PlayerPoseMixin",
+    "FirstPersonMixin",
+    "PlayerLayerMixin",
+    "LayerAccess",
+    "GuiCaptureMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

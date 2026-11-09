@@ -1,0 +1,26 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "quarkos_emotes"
+version = "${version}"
+displayName = "QuarkOS Emotes"
+authors = "Emilio Schwaiger / QuarkOS"
+description = '''Resource-pack emotes with a radial wheel and optional multiplayer sharing.'''
+displayTest = "IGNORE_ALL_VERSION"
+logoFile = "assets/quarkos_emotes/icon.png"
+
+[[dependencies.quarkos_emotes]]
+modId = "forge"
+mandatory = true
+versionRange = "[${forge_dep},)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.quarkos_emotes]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[${minecraft}]"
+ordering = "NONE"
+side = "BOTH"

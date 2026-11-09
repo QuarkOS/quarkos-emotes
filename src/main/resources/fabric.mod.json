@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "Resource-pack emotes with a radial wheel, smooth player animation and optional multiplayer sharing.",
+  "authors": [
+    "Emilio Schwaiger / QuarkOS"
+  ],
+  "license": "MIT",
+  "icon": "assets/quarkos_emotes/icon.png",
+  "environment": "*",
+  "mixins": [
+    "quarkos_emotes.mixins.json"
+  ],
+  "entrypoints": {
+    "main": [
+      "dev.quarkos.emotes.FabricEmotes"
+    ],
+    "client": [
+      "dev.quarkos.emotes.FabricEmotesClient"
+    ],
+    "modmenu": [
+      "dev.quarkos.emotes.ModMenuIntegration"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "${minecraft}",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}

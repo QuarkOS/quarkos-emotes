@@ -13,7 +13,6 @@ buildscript {
 data class ForgeNode(
     val forgeCoordinate: String,
     val forgeDep: String,
-    val geckolibVersion: String,
     val packMeta: String,
 )
 
@@ -22,14 +21,12 @@ val forgeNode = when (minecraftVersion) {
     "1.21.1" -> ForgeNode(
         "1.21.1-52.1.20",
         "52.1.20",
-        "4.9.3",
         """{"pack":{"description":"QuarkOS Emotes","pack_format":34}}""" + "\n",
     )
     "1.21.11" -> ForgeNode(
         "1.21.11-61.2.4",
         "61.2.4",
-        "5.4.5",
-        """{"pack":{"description":"QuarkOS Emotes","min_format":[94,0],"max_format":[94,1]}}""" + "\n",
+        """{"pack":{"description":"QuarkOS Emotes","min_format":[75,0],"max_format":[75,0]}}""" + "\n",
     )
     else -> null
 }
@@ -120,23 +117,10 @@ if (minecraftVersion == "forge" || forgeNode == null) {
         maven((fg as net.minecraftforge.gradle.ForgeGradleExtension).minecraftLibsMaven)
         maven("https://maven.minecraftforge.net/")
         mavenCentral()
-        exclusiveContent {
-            forRepository { maven("https://repo.unascribed.com") { name = "Unascribed" } }
-            filter { includeGroup("com.unascribed") }
-        }
-        exclusiveContent {
-            forRepository { maven("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/") { name = "GeckoLib" } }
-            filter { includeGroup("software.bernie.geckolib") }
-        }
     }
 
     dependencies {
         add("implementation", forgeMinecraft.dependency("net.minecraftforge:forge:${node.forgeCoordinate}"))
-        add("compileOnly", "com.unascribed:ears-api:1.4.5")
-        add("implementation", "com.fasterxml.jackson.core:jackson-databind:2.18.3")
-        add("implementation", "com.fasterxml.jackson.core:jackson-core:2.18.3")
-        add("implementation", "com.fasterxml.jackson.core:jackson-annotations:2.18.3")
-        add("implementation", "software.bernie.geckolib:geckolib-forge-$minecraftVersion:${node.geckolibVersion}")
     }
 
     tasks.named<Jar>("jar") {
@@ -146,17 +130,12 @@ if (minecraftVersion == "forge" || forgeNode == null) {
         manifest {
             attributes("MixinConfigs" to "quarkos_emotes.mixins.json")
         }
-        from({
-            configurations.getByName("runtimeClasspath")
-                .filter { it.name.startsWith("jackson-") }
-                .map { zipTree(it) }
-        })
     }
 
     // Mixin 0.8 on Forge reads MixinConfigs from the jar manifest. mods.toml
     // [[mixins]] is not consulted, and the userdev mod is a classes directory,
     // so the same manifest has to land next to the classes or the client mixins
-    // never apply and the mask is never drawn.
+    // never apply and player poses remain vanilla.
     val forgeManifest = layout.buildDirectory.dir("generated/forge-manifest")
     val writeForgeManifest = tasks.register("writeForgeManifest") {
         outputs.dir(forgeManifest)
@@ -187,7 +166,6 @@ if (minecraftVersion == "forge" || forgeNode == null) {
             "version" to "1.0.0+$minecraftVersion",
             "forge_dep" to node.forgeDep,
             "minecraft" to minecraftVersion,
-            "geckolib" to node.geckolibVersion,
         )
         inputs.property("forge_dep", node.forgeDep)
         inputs.property("minecraft", minecraftVersion)
@@ -209,11 +187,9 @@ if (minecraftVersion == "forge" || forgeNode == null) {
 
     tasks.withType<JavaExec>().configureEach {
         val shots = providers.gradleProperty("shots").orNull
-            ?: "/cursor/stores/bc-1243ce51-36c9-58c7-8fa4-153844455530/media/forge"
+            ?: rootProject.file("build/shots/forge/$minecraftVersion").absolutePath
         systemProperty("quarkos_emotes.shots", shots)
         systemProperty("quarkos_emotes.loader", "forge")
-        val gallery = providers.gradleProperty("galleryUrl").orNull ?: "http://127.0.0.1:39221"
-        systemProperty("cosmetics.galleryUrl", gallery)
         if (providers.gradleProperty("harness").orNull == "true") {
             systemProperty("quarkos_emotes.harness", "true")
             val width = providers.gradleProperty("width").orNull ?: "960"
@@ -226,12 +202,6 @@ if (minecraftVersion == "forge" || forgeNode == null) {
         if (!only.isNullOrBlank()) {
             systemProperty("quarkos_emotes.only", only)
         }
-        if (providers.gradleProperty("wardrobeOnly").orNull == "true") {
-            systemProperty("quarkos_emotes.wardrobeOnly", "true")
-        }
-        if (providers.gradleProperty("launchCheck").orNull == "true") {
-            systemProperty("quarkos_emotes.launchCheck", "true")
-        }
         val display = providers.gradleProperty("display").orNull
         val xauth = providers.gradleProperty("xauth").orNull
         if (!display.isNullOrBlank()) {
@@ -243,11 +213,11 @@ if (minecraftVersion == "forge" || forgeNode == null) {
         environment("vblank_mode", "0")
         environment("__GL_SYNC_TO_VBLANK", "0")
         if (name == "runClient") {
+            jvmArgs("-Xmx1536M")
             doFirst {
                 val dir = workingDir
                 dir.mkdirs()
                 dir.resolve("eula.txt").writeText("eula=true\n")
-                dir.resolve("client.properties").writeText("galleryUrl=$gallery\n")
                 if (providers.gradleProperty("harness").orNull == "true") {
                     val options = dir.resolve("options.txt")
                     val existing = if (options.exists()) options.readText() else ""

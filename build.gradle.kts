@@ -11,14 +11,6 @@ repositories {
         forRepository { maven("https://api.modrinth.com/maven") { name = "Modrinth" } }
         filter { includeGroup("maven.modrinth") }
     }
-    exclusiveContent {
-        forRepository { maven("https://repo.unascribed.com") { name = "Unascribed" } }
-        filter { includeGroup("com.unascribed") }
-    }
-    exclusiveContent {
-        forRepository { maven("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/") { name = "GeckoLib" } }
-        filter { includeGroup("software.bernie.geckolib") }
-    }
 }
 
 dependencies {
@@ -27,18 +19,6 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${sc.properties.get<String>("deps.fabric_api")}")
     modCompileOnly("maven.modrinth:modmenu:${sc.properties.get<String>("deps.modmenu")}")
-    compileOnly("com.unascribed:ears-api:1.4.5")
-    val geckoVersion = if (sc.current.version == "1.21.1") "4.9.3" else "5.4.5"
-    modImplementation("software.bernie.geckolib:geckolib-fabric-${sc.current.version}:$geckoVersion")
-
-    val jackson = "2.18.3"
-    modImplementation("com.fasterxml.jackson.core:jackson-databind:$jackson")
-    modImplementation("com.fasterxml.jackson.core:jackson-core:$jackson")
-    modImplementation("com.fasterxml.jackson.core:jackson-annotations:$jackson")
-    include("com.fasterxml.jackson.core:jackson-databind:$jackson")
-    include("com.fasterxml.jackson.core:jackson-core:$jackson")
-    include("com.fasterxml.jackson.core:jackson-annotations:$jackson")
-
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -100,7 +80,6 @@ tasks {
             "name" to sc.properties.get<String>("mod.name"),
             "version" to "${sc.properties.get<String>("mod.version")}+$minecraftVersion",
             "minecraft" to sc.properties.get<String>("mod.mc_compat"),
-            "geckolib" to if (sc.current.version == "1.21.1") "4.9.3" else "5.4.5",
         )
         inputs.properties(props)
         exclude("META-INF/mods.toml")
@@ -113,21 +92,13 @@ tasks {
 
     test {
         useJUnitPlatform()
-        if (providers.gradleProperty("bench").orNull == "true") {
-            systemProperty("quarkos.bench", "true")
-            providers.gradleProperty("benchIterations").orNull?.let { systemProperty("quarkos.bench.iterations", it) }
-        }
-        if (providers.gradleProperty("liveGallery").orNull == "true") {
-            systemProperty("quarkos.liveGallery", "true")
-        }
     }
 
     withType<JavaExec>().configureEach {
         val shots = providers.gradleProperty("shots").orNull
-            ?: "/cursor/stores/bc-1243ce51-36c9-58c7-8fa4-153844455530/media/fabric"
+            ?: rootProject.file("build/shots/fabric/${sc.current.version}").absolutePath
         systemProperty("quarkos_emotes.shots", shots)
         systemProperty("quarkos_emotes.loader", "fabric")
-        systemProperty("cosmetics.galleryUrl", "http://127.0.0.1:39221")
         if (providers.gradleProperty("harness").orNull == "true") {
             systemProperty("quarkos_emotes.harness", "true")
             val wide = providers.gradleProperty("wide").orNull == "true"
@@ -136,9 +107,6 @@ tasks {
             args("--width", width, "--height", height)
             // Same offline player as the other head shots, so the default skin does not change.
             args("--username", "Player546")
-        }
-        if (providers.gradleProperty("wardrobeOnly").orNull == "true") {
-            systemProperty("quarkos_emotes.wardrobeOnly", "true")
         }
         val only = providers.gradleProperty("only").orNull
         if (!only.isNullOrBlank()) {
