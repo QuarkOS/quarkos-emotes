@@ -197,6 +197,7 @@ if (minecraftVersion == "forge" || forgeNode == null) {
             ?: rootProject.file("build/shots/forge/$minecraftVersion").absolutePath
         systemProperty("quarkos_emotes.shots", shots)
         systemProperty("quarkos_emotes.loader", "forge")
+        systemProperty("quarkos_emotes.guiScale", providers.gradleProperty("guiScale").orNull ?: "0")
         if (providers.gradleProperty("harness").orNull == "true") {
             systemProperty("quarkos_emotes.harness", "true")
             val width = providers.gradleProperty("width").orNull ?: "960"
@@ -228,19 +229,19 @@ if (minecraftVersion == "forge" || forgeNode == null) {
                 if (providers.gradleProperty("harness").orNull == "true") {
                     val options = dir.resolve("options.txt")
                     val existing = if (options.exists()) options.readText() else ""
-                    options.writeText(seedHarnessOptions(existing))
+                    options.writeText(seedHarnessOptions(existing, providers.gradleProperty("guiScale").orNull ?: "0"))
                 }
             }
         }
     }
 }
 
-fun seedHarnessOptions(existing: String): String {
+fun seedHarnessOptions(existing: String, guiScale: String): String {
     val wanted = linkedMapOf(
         "pauseOnLostFocus" to "false",
         "onboardAccessibility" to "false",
         "menuBackgroundBlurriness" to "0",
-        "guiScale" to "2",
+        "guiScale" to guiScale,
         "maxFps" to "30",
         "enableVsync" to "false",
         "renderDistance" to "8",

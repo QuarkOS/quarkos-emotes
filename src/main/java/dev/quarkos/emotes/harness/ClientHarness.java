@@ -19,10 +19,37 @@ public final class ClientHarness {
     private record Shot(String name,String id,CameraType camera,String ui) {}
     private static Stage stage=Stage.TITLE;
     private static int ticks,index,wait,pass,fail;
-    private static boolean queued,moved,summary;
+    private static boolean queued,moved,summary,optionsReady,handMoved;
     private static List<Shot> shots=List.of();
     private static Path pending;
+    public static float portraitDistance=2.85f,portraitDrop=.65f,portraitOrbit,portraitForward;
+    private static final int GUI_SCALE=Math.max(0,Math.min(8,Integer.getInteger("quarkos_emotes.guiScale",0)));
+    /** Authored key times in seconds: contact/gesture peaks, not a fraction of clip length. */
+    private static double poseTime(Emote e) {
+        String name=e.id().substring(e.id().indexOf(':')+1);
+        double time=switch(name) {
+            case "wave" -> .5;
+            case "thinking" -> 1.2;
+            case "facepalm" -> .65;
+            case "clap" -> .6;
+            case "tableflip" -> .75;
+            case "bow" -> 1.1;
+            case "salute" -> .8;
+            case "laugh" -> .65;
+            case "dab" -> .82;
+            case "sit" -> 1.4;
+            case "dance_groove" -> .5;
+            case "dance_elaborate" -> 3.25;
+            case "shrug" -> .84;
+            case "point" -> 1.0;
+            case "cheer" -> .75;
+            case "stretch" -> 1.15;
+            default -> Math.min(1,e.length()/2);
+        };
+        return Math.min(time,Math.max(0,e.length()-.05));
+    }
     public static boolean active() { return Boolean.getBoolean("quarkos_emotes.harness"); }
+    public static void recordHand(boolean changed) { if(active())handMoved|=changed; }
     public static void record(int entity,boolean changed) {
         var mc=Minecraft.getInstance(); if(active()&&mc.player!=null&&mc.player.getId()==entity) moved|=changed;
     }
@@ -30,7 +57,16 @@ public final class ClientHarness {
         if(!active()) return;
         ticks++;
         try {
-            if(ticks>20*240) { LoggerFactory.getLogger("quarkos_emotes").error("EMOTE_HARNESS timeout stage={}",stage);stage=Stage.STOP; }
+            if(!optionsReady) {
+                optionsReady=true;mc.options.onboardAccessibility=false;mc.options.guiScale().set(GUI_SCALE);
+                mc.options.save();mc.resizeDisplay();
+            }
+            if(mc.screen instanceof AccessibilityOnboardingScreen) {
+                mc.options.onboardAccessibility=false;mc.options.save();mc.setScreen(new TitleScreen());stage=Stage.TITLE;ticks=0;return;
+            }
+            if(stage!=Stage.STOP&&ticks>20*240) {
+                fail++;LoggerFactory.getLogger("quarkos_emotes").error("EMOTE_HARNESS timeout stage={}",stage);stage=Stage.STOP;wait=0;
+            }
             switch(stage) {
                 case TITLE -> { if(mc.getOverlay()==null&&mc.screen instanceof TitleScreen) { stage=Stage.CREATE;ticks=0; } }
                 case CREATE -> create(mc);
@@ -80,23 +116,25 @@ public final class ClientHarness {
         Set<String> only=new HashSet<>(Arrays.asList(System.getProperty("quarkos_emotes.only","").split(",")));
         for(var e:EmoteResources.REGISTRY.all()) {
             String name=e.id().split(":",2)[1].replace('/','_');
-            if(!only.contains("")&&!only.contains(name)&&!only.contains(e.id())&&!only.contains("emote-"+name)) continue;
-            list.add(new Shot("emote-"+name,e.id(),CameraType.THIRD_PERSON_FRONT,""));
+            boolean all=only.contains("")||only.contains(name)||only.contains(e.id())||only.contains("emote-"+name);
+            if(all) list.add(new Shot("emote-"+name,e.id(),CameraType.THIRD_PERSON_FRONT,""));
+            if(all||only.contains("emote-"+name+"-34")) list.add(new Shot("emote-"+name+"-34",e.id(),CameraType.THIRD_PERSON_FRONT,"34"));
             if(name.equals("tableflip")||name.startsWith("dance_")) {
-                list.add(new Shot("emote-"+name+"-back",e.id(),CameraType.THIRD_PERSON_BACK,""));
-                list.add(new Shot("emote-"+name+"-side",e.id(),CameraType.THIRD_PERSON_FRONT,"side"));
+                if(all||only.contains("emote-"+name+"-back")) list.add(new Shot("emote-"+name+"-back",e.id(),CameraType.THIRD_PERSON_BACK,""));
+                if(all||only.contains("emote-"+name+"-side")) list.add(new Shot("emote-"+name+"-side",e.id(),CameraType.THIRD_PERSON_FRONT,"side"));
             }
         }
         String wave=EmoteResources.REGISTRY.all().stream().filter(e->e.id().endsWith(":wave")).map(Emote::id).findFirst()
                 .orElse(EmoteResources.REGISTRY.all().isEmpty()?"":EmoteResources.REGISTRY.all().getFirst().id());
-        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-config","fp-wave")) if(only.contains("")||only.contains(ui))
+        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","fp-wave","fp-wave-camera")) if(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel")))
             list.add(new Shot(ui,wave,ui.equals("fp-wave")?CameraType.FIRST_PERSON:CameraType.THIRD_PERSON_FRONT,ui));
+        if(list.isEmpty())throw new IllegalArgumentException("No screenshots match quarkos_emotes.only");
         return list;
     }
-    private static void anchor(Minecraft mc,boolean side) {
+    private static void anchor(Minecraft mc) {
         var p=mc.player; if(p==null) return;
         p.setNoGravity(true);p.setDeltaMovement(0,0,0);p.setPos(.5,-59,.5);
-        p.xo=.5;p.yo=-59;p.zo=.5;float yaw=side?90:180;
+        p.xo=.5;p.yo=-59;p.zo=.5;float yaw=180;
         p.setYRot(yaw);p.yRotO=yaw;p.setYHeadRot(180);p.yHeadRotO=180;p.setYBodyRot(180);p.yBodyRotO=180;p.setXRot(0);p.xRotO=0;
         var server=mc.getSingleplayerServer();
         if(server!=null&&ticks%20==0) server.execute(()-> {
@@ -107,22 +145,52 @@ public final class ClientHarness {
         if(index>=shots.size()) {
             stage=Stage.STOP;wait=0;return;
         }
-        var shot=shots.get(index);anchor(mc,shot.ui().equals("side"));
+        var shot=shots.get(index);anchor(mc);
         if(wait==0) {
-            moved=false;queued=false;mc.setScreen(null); EmoteConfig.get().firstPerson=EmoteConfig.FirstPerson.SHOW_ARMS;
-            EmotesClient.preview(shot.id());var p=EmotesClient.player(mc.player.getUUID());if(p!=null)p.freeze(p.emote().length()*.4);
-            mc.options.setCameraType(shot.camera());mc.options.hideGui=true;
+            moved=false;handMoved=false;queued=false;mc.setScreen(null);
+            portraitOrbit=shot.ui().equals("side")?90:shot.ui().equals("34")?35:0;
+            portraitDistance=2.85f;portraitDrop=.65f;portraitForward=0;
+            if(shot.id().endsWith(":tableflip")) {
+                portraitDistance=portraitOrbit==0?3.1f:2.85f;portraitDrop=.8f;
+                if(portraitOrbit!=0)portraitForward=.55f;
+            }
+            if(shot.id().endsWith(":sit")) { portraitDistance=2.25f;portraitDrop=1.05f; }
+            EmoteConfig.get().firstPerson=shot.ui().equals("fp-wave-camera")?EmoteConfig.FirstPerson.THIRD_PERSON_CAMERA:EmoteConfig.FirstPerson.SHOW_ARMS;
+            mc.options.setCameraType(shot.camera());
+            if(shot.ui().equals("fp-wave-camera")) {
+                mc.options.setCameraType(CameraType.FIRST_PERSON);EmotesClient.play(shot.id());
+                if(mc.options.getCameraType()!=CameraType.THIRD_PERSON_BACK) throw new IllegalStateException("First-person camera mode did not switch");
+            } else EmotesClient.preview(shot.id());
+            var p=EmotesClient.player(mc.player.getUUID());if(p!=null)p.freeze(poseTime(p.emote()));
+            // F1 also hides the first-person hands. Keep the normal HUD for that evidence shot.
+            mc.options.hideGui=!shot.ui().equals("fp-wave");
             if(shot.ui().startsWith("ui-wheel")) { var wheel=new EmoteWheelScreen();mc.setScreen(wheel);if(shot.ui().endsWith("hover"))wheel.harnessHover=0; }
-            if(shot.ui().equals("ui-config")) mc.setScreen(new EmoteConfigScreen(null));
+            if(shot.ui().equals("ui-config")) {
+                mc.setScreen(new EmoteConfigScreen(null));
+                // init() starts the preview; freeze that new instance as well.
+                p=EmotesClient.player(mc.player.getUUID());if(p!=null)p.freeze(poseTime(p.emote()));
+            }
+            LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_SHOT name={} time={} camera={} distance={} orbit={} guiScale={} effectiveScale={}",
+                    shot.name(),p==null?0:p.time(0),mc.options.getCameraType(),portraitDistance,portraitOrbit,GUI_SCALE,mc.getWindow().getGuiScale());
         }
         wait++;
         if(wait<35) return;
         Path path=directory().resolve(shot.name()+".png");
         if(!queued) { Files.createDirectories(path.getParent());Files.deleteIfExists(path);pending=path;queued=true;return; }
         if(!Files.isRegularFile(path)) { if(wait>300) throw new IllegalStateException("Screenshot not written: "+path);return; }
-        if(shot.name().startsWith("emote-")&&!shot.name().endsWith("-back")&&!shot.name().endsWith("-side")) {
+        if(shot.name().startsWith("emote-")&&!shot.name().endsWith("-back")&&!shot.name().endsWith("-side")&&!shot.name().endsWith("-34")) {
             boolean ok=moved;if(ok)pass++;else fail++;
             LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name={} result={} detail={}",shot.id(),ok?"PASS":"FAIL",ok?"rendered player bone changed":"rendered pose equals idle or model hook was not reached");
+        }
+        if(shot.ui().equals("fp-wave")) {
+            if(handMoved)pass++;else fail++;
+            LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name=fp-wave result={} detail=animated_hand_render_hook",handMoved?"PASS":"FAIL");
+        }
+        if(shot.ui().equals("fp-wave-camera")) {
+            boolean ok=mc.options.getCameraType()==CameraType.THIRD_PERSON_BACK&&moved;
+            if(ok)pass++;else fail++;
+            LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name=fp-wave-camera result={} detail=camera_switched_and_pose_rendered",ok?"PASS":"FAIL");
+            EmotesClient.stop();
         }
         index++;wait=0;ticks=0;
     }

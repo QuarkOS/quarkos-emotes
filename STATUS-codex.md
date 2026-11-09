@@ -178,3 +178,95 @@ Unverified / TODO for parent:
    synchronization/reconnect/tracking checks. No networking changes in E4.
 5. Update release screenshots/store evidence using verified E4 captures, then
    have the parent review/stage/commit this worktree. No commit was attempted.
+
+## E5 — screenshot-driven UI and visual harness pass (2026-11-10)
+
+Reviewed the parent's real pre-E4 Fabric 1.21.11 wheel, hovered wheel, config,
+first-person and all sixteen emote screenshots using the image viewer (contact
+sheet for the emotes), plus Forge sit/tableflip captures. These images predate
+E4's importer/metadata/prop corrections; they are not evidence of E5 rendering.
+No Gradle invocation, client launch, commit, or write to `.git` in this session.
+
+Changes:
+
+- Harness disables/saves accessibility onboarding on its first tick and dismisses
+  an already-visible AccessibilityOnboardingScreen to TitleScreen, resetting the
+  title stage. Works through shared code on both versions/loaders. Timeouts and
+  empty capture filters now fail instead of producing a misleading success.
+- Verified E4 filename-derived IDs against all 16 actual resources, including
+  sidecars, and verified that every display-name key exists in runtime English.
+  Filenames are `emote-bow.png`, `emote-tableflip.png`, etc.; no doubled namespace.
+- Added a harness-only CameraZoomMixin based on the sister cosmetics approach:
+  2.85-block distance, lowered body target, true camera orbit without rotating
+  the head. Upright full bodies should fill approximately 65% of frame height
+  at FOV 54. Every emote gets `-34`; tableflip/dances retain `-back` and `-side`.
+  Tableflip uses .75 s (table rotated 110 degrees and raised 12 pixels); its
+  straight views use 3.1 blocks, angled views include a .55-block forward target
+  shift to contain the prop. Sit has separate distance/height for visible feet.
+  Numeric projection checks found and corrected prop cropping in angled views.
+- Replaced blanket 40% freezes with a per-emote seconds table: wave .5, thinking
+  1.2, facepalm .65, clap .6 (contact), tableflip .75, bow 1.1, salute .8, laugh
+  .65, dab .82, sit 1.4, groove .5, elaborate 3.25, shrug .84, point 1, cheer .75,
+  stretch 1.15. Config's newly-created preview is frozen after screen init too.
+- Wheel now reserves separate header/search, ring, label, help and footer areas;
+  opaque center paging, sector gaps, stronger contrast, consistent vanilla
+  buttons/tooltips, clear favorites/all-emotes toggle with count, localized
+  labels with readable custom-pack fallback, and an initial selection prompt.
+  Search does not initially steal number/F/hold-release shortcuts. Page/favorite
+  controls and all text fit a 320x240 logical GUI, with no label inside the ring.
+- Config has a separate framed/scissored right preview panel, bounded entity
+  scale/rotation, selected-emote caption, title, option tooltips and bottom Done.
+  Shorter camera-mode value keeps the smallest option column readable.
+- Fixed the empty first-person capture: hideGui also suppresses Minecraft hands,
+  so fp-wave keeps the HUD enabled. SHOW_ARMS now renders both arms through a
+  stable player-space transform, replacing item-holding transforms/items for
+  the duration; existing per-arm/sleeve pose hooks apply authored animation.
+  Added an independent animated-hand hook check. fp-wave-camera uses real play
+  from FIRST_PERSON and verifies THIRD_PERSON_BACK plus a rendered pose.
+- Both build scripts pass -PguiScale=<n> as quarkos_emotes.guiScale; Forge's
+  existing options seed respects it. Runtime applies/saves it once and resizes.
+  Added ui-wheel-s<n>.png; EMOTE_SHOT logs requested/effective scale, freeze time
+  and camera profile. Full capture set is 44 PNGs and 18 render checks.
+- Fixed E2 sit entry: delayed the shared drop until the rigid legs clear the
+  floor, ending with a 9.7-pixel drop and small clearance. Shared six-bone root
+  translations now preserve floor clearance during pose blending too; otherwise
+  seated blend-out dipped nearly 2.8 pixels below ground. Independent sibling
+  relationships are preserved. E2 bow now compensates its hip pivot and carries
+  head/shoulder positions explicitly; the original flat pose separated torso
+  from hips by about 7.4 pixels in depth at its peak. All other E2 JSON unchanged.
+- All five animator animation files and both table assets remain byte-identical
+  to /home/box/blockato/emotes. No author-delivery bytes were edited.
+
+Verified without Gradle:
+
+- Four-target cached-jar javac --release 21 -proc:none succeeds: Fabric 1.21.1 /
+  1.21.11 and Forge 52.1.20 / 61.2.4. Existing loader deprecation warnings only.
+  Used /tmp/check_emotes_compile.py; this does not run Mixin annotation processing,
+  Stonecutter generation, Gradle Kotlin scripts or remapping.
+- 25/25 pure-Java JUnit tests pass (/tmp/e4_test.py). Three new tests cover all
+  16 actual IDs/translations, bow's hip/neck/shoulder connections and sit floor
+  clearance at 240 Hz across 21 blend weights (entry, hold and exit).
+- 20/20 Python tests pass; validator reports 16 valid emotes / 0 errors.
+- Direct byte comparisons against animator deliveries pass for all seven assets.
+- git diff --check passes. Only intended source/resources/docs edits are left;
+  temporary audit, compile and test artifacts are under /tmp.
+
+Unverified / TODO for parent:
+
+1. Build all four REAL Gradle targets and run the harness from fresh run dirs
+   without a manually supplied options.txt. Confirm onboarding dismissal, Mixin
+   injection/remapping (including new camera/hand mixins), and EMOTE_SUMMARY
+   pass=18 fail=0 for a full run. This session cannot produce new in-game images.
+2. Review all 44 captures, especially tableflip front/34/side, bow side geometry,
+   sit feet during entry AND cancellation, fp-wave's visible raised arm and
+   fp-wave-camera's switched camera. Hook/projection checks cannot prove pixels.
+   Inspect Steve and Alex, armor/outer layers, held-item restoration and camera
+   restoration after normal end/cancel. The delivered five gestures rely on E4's
+   corrected importer and still need their first post-E4 visual review.
+3. Run -Pwidth=854 -Pheight=480 -PguiScale=2, then 3 and 4; also 2560x1440 at
+   several scales, using separate -Pshots directories. Read effectiveScale in
+   EMOTE_SHOT: Minecraft normally clamps 854x480 to scale 2 even if 3/4 requested.
+   Review hover/search, empty favorites, page changes, keyboard navigation,
+   translated labels and option tooltips (layout math is not a live UI test).
+4. Retain E4's reload/custom-prop and multiplayer/dedicated-server checks. No
+   networking changes here. Parent reviews/stages/commits the working files.

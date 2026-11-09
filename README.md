@@ -52,11 +52,21 @@ English emote names are in the runtime `lang/en_us.json`.
 
 ## Release checks
 
-The opt-in xvfb harness captures `emote-wave`, `emote-thinking`,
-`emote-tableflip` (front/back/side), `emote-facepalm`, `emote-clap`, the other
-emotes, the wheel/config UI and first-person wave. Screenshots and results
-from the parent's separate worktree are pending integration. Inspect both
-classic and slim skins, table UVs and floor placement, and end/cancel reset.
+The opt-in xvfb harness captures every `emote-<name>.png` from the front and
+`emote-<name>-34.png` at a ¾ angle, plus back/side views for tableflip and dances.
+It uses representative authored poses, closer framing, and handles first-launch
+accessibility onboarding automatically. `fp-wave.png` shows animated first-person
+arms; `fp-wave-camera.png` exercises the automatic third-person camera switch.
+Show-arms mode replaces held items with the animated arms while an emote plays.
+
+Pass `-Pharness=true -Pshots=<directory> -PguiScale=3 -Pwidth=1280 -Pheight=720`
+to a client task. The requested scale is included in `ui-wheel-s3.png`; Minecraft
+may clamp its effective scale to preserve the minimum GUI size. Use distinct shot
+directories for each size/scale run. `-Ponly=wave,ui-wheel,ui-wheel-hover,ui-config`
+limits captures. Full runs now produce 44 shots and 18 render checks.
+
+E5's new screenshots still need the parent's in-game run. Inspect both classic
+and slim skins, table UVs and floor placement, and end/cancel reset.
 Dedicated-server startup and two-client synchronization also need verification.
 
 [Changelog](CHANGELOG.md) · [License](LICENSE) · [Handoff log](STATUS-codex.md)

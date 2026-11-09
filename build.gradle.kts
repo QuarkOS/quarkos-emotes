@@ -99,6 +99,7 @@ tasks {
             ?: rootProject.file("build/shots/fabric/${sc.current.version}").absolutePath
         systemProperty("quarkos_emotes.shots", shots)
         systemProperty("quarkos_emotes.loader", "fabric")
+        systemProperty("quarkos_emotes.guiScale", providers.gradleProperty("guiScale").orNull ?: "0")
         if (providers.gradleProperty("harness").orNull == "true") {
             systemProperty("quarkos_emotes.harness", "true")
             val wide = providers.gradleProperty("wide").orNull == "true"

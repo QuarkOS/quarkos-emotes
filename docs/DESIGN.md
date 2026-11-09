@@ -70,8 +70,27 @@ config/quarkos_emotes.json and previews the selected animation without sending a
 network play request. Preview requires an in-world player.
 
 The opt-in client harness creates a creative flat world, fixes time/weather,
-freezes each selected emote at 40%, captures world/UI/first-person shots at frame
-end, and checks that the model hook actually changed a rendered player bone.
+freezes each selected emote at a representative authored key (wave .5 s,
+clap contact .6 s, thinking 1.2 s, facepalm .65 s, table in flight .75 s).
+The remaining per-emote times live in ClientHarness.poseTime. Captures include
+front/¾ views of all sixteen emotes and back/side views of tableflip and dances.
+A harness-only Camera mixin moves the camera closer, lowers its target, and
+orbits it without twisting the player's head. Table views include a forward
+framing offset; sit has a lower target so its feet stay visible.
+
+First-person SHOW_ARMS uses a stable player-space transform for both arms instead
+of vanilla's rotated item-holding transform, temporarily replacing held items.
+The first-person harness shot keeps the HUD enabled because F1 also disables
+Minecraft's hand renderer. It checks the hand pose hook independently. The
+camera-mode shot starts in first person and calls the real play path to check
+that THIRD_PERSON_CAMERA switches and renders the emote. Screenshots are saved
+at frame end, after deferred rendering. Full runs have 44 captures / 18 checks.
+
 Use -Pharness=true -Pshots=<directory>, optionally -Ponly=wave,ui-wheel and
--Pwidth/-Pheight. Full Gradle builds and xvfb captures are parent-run checks;
-this implementation session uses cached jars and javac only.
+-Pwidth/-Pheight. -PguiScale=<n> reaches both loaders as the system property
+quarkos_emotes.guiScale (0 = auto). ui-wheel-s<n>.png names the requested scale;
+EMOTE_SHOT logs the effective scale as well. Minecraft clamps scales to preserve
+its minimum GUI size, so 854x480 requests 2–4 normally all use effective scale 2.
+The wheel and config layout fit the minimum 320x240 logical GUI. Full Gradle
+builds and xvfb captures are parent-run checks; this implementation session
+uses cached jars and javac only.

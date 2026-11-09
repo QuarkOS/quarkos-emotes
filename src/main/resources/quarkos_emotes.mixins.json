@@ -9,7 +9,9 @@
     "FirstPersonMixin",
     "PlayerLayerMixin",
     "LayerAccess",
-    "GuiCaptureMixin"
+    "GuiCaptureMixin",
+    "CameraZoomMixin",
+    "EmoteHandsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -31,6 +31,11 @@ public abstract class FirstPersonMixin {
     *///?}
     private static void apply(ModelPart arm,String bone) {
         var mc=Minecraft.getInstance();if(mc.player==null||EmoteConfig.get().firstPerson!=EmoteConfig.FirstPerson.SHOW_ARMS)return;
-        var p=EmotesClient.player(mc.player.getUUID());if(p!=null)EmotePose.apply(arm,p.pose(.5).get(bone),(float)p.weight(.5));
+        var p=EmotesClient.player(mc.player.getUUID());
+        if(p!=null) {
+            float x=arm.xRot,y=arm.yRot,z=arm.zRot;
+            EmotePose.apply(arm,p.pose(.5).get(bone),(float)p.weight(.5));
+            dev.quarkos.emotes.harness.ClientHarness.recordHand(Math.abs(arm.xRot-x)+Math.abs(arm.yRot-y)+Math.abs(arm.zRot-z)>.001);
+        }
     }
 }
