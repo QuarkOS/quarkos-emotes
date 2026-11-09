@@ -14,6 +14,9 @@ import org.slf4j.LoggerFactory;
 public final class EmoteResources implements ResourceManagerReloadListener {
     public static final EmoteRegistry REGISTRY=new EmoteRegistry();
     @Override public void onResourceManagerReload(ResourceManager manager) {
+        var mc=Minecraft.getInstance();
+        if(!mc.isSameThread()) {mc.submit(()->onResourceManagerReload(manager)).join();return;}
+        EmotesClient.reload();
         GeometryProps.invalidate();
         List<Emote> emotes=new ArrayList<>();
         List<String> packOrder=manager.listPacks().map(p->p.packId()).toList();
@@ -61,6 +64,7 @@ public final class EmoteResources implements ResourceManagerReloadListener {
             } catch(Exception e) {warn(p.toString(),e);}
         } catch(IOException e) {warn(custom.toString(),e);}
         REGISTRY.replace(emotes);
+        EmotesClient.resourcesReloaded();
         dev.quarkos.emotes.render.PropAttachment.invalidate();
         LoggerFactory.getLogger("quarkos_emotes").info("Loaded {} emotes",REGISTRY.all().size());
     }

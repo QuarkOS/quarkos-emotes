@@ -67,7 +67,7 @@ if (minecraftVersion == "forge" || forgeNode == null) {
     forgeMinecraft.mappings("official", minecraftVersion)
     val runs = (minecraftExt as groovy.lang.GroovyObject).getProperty("runs")
         as org.gradle.api.NamedDomainObjectContainer<net.minecraftforge.gradle.SlimeLauncherOptions>
-    val runDir = rootProject.layout.projectDirectory.dir("run/forge/$minecraftVersion")
+    val runDir = rootProject.layout.projectDirectory.dir(providers.gradleProperty("runDir").orNull ?: "run/forge/$minecraftVersion")
     runs.configureEach {
         workingDir.set(runDir)
         systemProperty("forge.logging.console.level", "info")
@@ -105,12 +105,19 @@ if (minecraftVersion == "forge" || forgeNode == null) {
     }
     tasks.named("compileJava") { dependsOn("stonecutterGenerate") }
     tasks.named("processResources") { dependsOn("stonecutterGenerate") }
+    apply(from = rootProject.file("gradle/mp-runs.gradle.kts"))
+
     runs.register("client") {
         mods {
             register("quarkos_emotes") {
                 source(mainSource.get())
+                source(sourceSets.named("proof").get())
             }
         }
+    }
+
+    runs.register("server") {
+        mods { register("quarkos_emotes") { source(mainSource.get()); source(sourceSets.named("proof").get()) } }
     }
 
     repositories {
@@ -131,6 +138,8 @@ if (minecraftVersion == "forge" || forgeNode == null) {
     }
 
     tasks.named<Jar>("jar") {
+        from(rootProject.file("LICENSE")) { into("META-INF") }
+        exclude("**/*.bbmodel", "**/*.py", "**/*.sh", "**/*Test.class", "**/test/**", "dev/quarkos/emotes/harness/**")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         exclude("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA")
         exclude("META-INF/MANIFEST.MF")
@@ -198,13 +207,13 @@ if (minecraftVersion == "forge" || forgeNode == null) {
         systemProperty("quarkos_emotes.shots", shots)
         systemProperty("quarkos_emotes.loader", "forge")
         systemProperty("quarkos_emotes.guiScale", providers.gradleProperty("guiScale").orNull ?: "0")
-        if (providers.gradleProperty("harness").orNull == "true") {
+        if (name == "runClient" && providers.gradleProperty("harness").orNull == "true") {
             systemProperty("quarkos_emotes.harness", "true")
             val width = providers.gradleProperty("width").orNull ?: "960"
             val height = providers.gradleProperty("height").orNull ?: "540"
             args("--width", width, "--height", height)
             // Same offline player as the other head shots, so the default skin does not change.
-            args("--username", "Player546")
+            args("--username", providers.gradleProperty("username").orNull ?: "Player546")
         }
         val only = providers.gradleProperty("only").orNull
         if (!only.isNullOrBlank()) {

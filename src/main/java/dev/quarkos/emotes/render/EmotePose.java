@@ -8,13 +8,13 @@ public final class EmotePose {
     public static void apply(HumanoidModel<?> model,int entityId,float partial) {
         var playback=EmotesClient.entity(entityId); if(playback==null) return;
         var pose=playback.pose(partial); float weight=(float)playback.weight(partial);
-        double[] before=dev.quarkos.emotes.harness.ClientHarness.active()?snapshot(model):null;
+        double[] before=(dev.quarkos.emotes.ClientProofHooks.visual()||dev.quarkos.emotes.ClientProofHooks.multiplayer())?snapshot(model):null;
         var parts=java.util.Map.of("head",model.head,"body",model.body,"right_arm",model.rightArm,
                 "left_arm",model.leftArm,"right_leg",model.rightLeg,"left_leg",model.leftLeg);
         var baseline=new java.util.LinkedHashMap<String,Emote.Pose>();
         parts.forEach((name,part)->baseline.put(name,current(part)));
         PoseMath.flat(baseline,pose,weight).forEach((name,result)->set(parts.get(name),result));
-        if(before!=null)dev.quarkos.emotes.harness.ClientHarness.record(entityId,changed(before,snapshot(model)));
+        if(before!=null)dev.quarkos.emotes.ClientProofHooks.record(entityId,changed(before,snapshot(model)));
     }
     private static double[] snapshot(HumanoidModel<?> m) {
         double[] values=new double[54];int i=0;

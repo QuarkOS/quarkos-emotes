@@ -18,9 +18,13 @@ public final class ForgeEmotesClient {
         *///?}
         ModLoadingContext.get().registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,()->new ConfigScreenHandler.ConfigScreenFactory(EmoteConfigScreen::new));
         ForgeNetwork.receiver=EmotesClient::receive;
+        EmotesClient.capability(()-> {
+            var connection=Minecraft.getInstance().getConnection();
+            return connection!=null&&ForgeNetwork.CHANNEL!=null&&ForgeNetwork.CHANNEL.isRemotePresent(connection.getConnection());
+        });
         EmotesClient.sender(id->{
             var connection=Minecraft.getInstance().getConnection();
-            if(connection==null||!ForgeNetwork.CHANNEL.isRemotePresent(connection.getConnection())) return false;
+            if(connection==null||ForgeNetwork.CHANNEL==null||!ForgeNetwork.CHANNEL.isRemotePresent(connection.getConnection())) return false;
             ForgeNetwork.CHANNEL.send(new ForgeNetwork.Request(id),PacketDistributor.SERVER.noArg()); return true;
         });
     }

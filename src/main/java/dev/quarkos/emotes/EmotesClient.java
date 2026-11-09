@@ -3,7 +3,7 @@ package dev.quarkos.emotes;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.quarkos.emotes.animation.*;
 import dev.quarkos.emotes.config.*;
-import dev.quarkos.emotes.harness.ClientHarness;
+import dev.quarkos.emotes.network.PlaybackState;
 import net.minecraft.client.*;
 import net.minecraft.client.resources.sounds.*;
 import net.minecraft.resources.Identifier;
@@ -23,8 +23,15 @@ public final class EmotesClient {
     public static final KeyMapping[] FAVORITES=java.util.stream.IntStream.range(1,5).mapToObj(i->
             new KeyMapping("key.quarkos_emotes.favorite_"+i,InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_UNKNOWN,CATEGORY)).toArray(KeyMapping[]::new);
     private static final Map<UUID,EmotePlayer> PLAYERS=new HashMap<>();
+    private static final Map<UUID,Object> ENTITIES=new HashMap<>();
     private static boolean ready,hinted;
-    private static Object level;
+    private static Object level,localEntity,connection;
+    private static boolean sharedLocal;
+    private static int hintCount;
+    private static java.util.function.BooleanSupplier capability=()->false;
+    public static void capability(java.util.function.BooleanSupplier c) { capability=c; }
+    public static boolean canSend() { return capability.getAsBoolean(); }
+    public static int hintCount() { return hintCount; }
     private static CameraType savedCamera;
     private static net.minecraft.world.phys.Vec3 lastPosition;
     private static java.util.function.Function<String,Boolean> sender=id->false;
@@ -39,47 +46,84 @@ public final class EmotesClient {
         if(entity==mc.player&&!(mc.screen instanceof EmoteConfigScreen)&&mc.options.getCameraType().isFirstPerson()&&EmoteConfig.get().firstPerson==EmoteConfig.FirstPerson.NONE) return null;
         return PLAYERS.get(entity.getUUID());
     }
-    public static void receive(UUID uuid,String id) {
+    public static void receive(UUID uuid,String id) { receive(uuid,id,0); }
+    public static void receive(UUID uuid,String id,int elapsed) {
         Minecraft mc=Minecraft.getInstance();
+        if(!mc.isSameThread()) { mc.execute(()->receive(uuid,id,elapsed));return; }
+        synchronizeWorld(mc);
+        if(mc.level==null||uuid==null||id==null||!PlaybackState.validElapsed(elapsed))return;
         // Local playback starts immediately and must not restart on the server echo.
-        if(mc.player!=null&&mc.player.getUUID().equals(uuid)) return;
-        if(id.isEmpty()) { var p=PLAYERS.get(uuid); if(p!=null) p.stop(); }
-        else { var e=EmoteResources.REGISTRY.get(id); if(e!=null) PLAYERS.put(uuid,new EmotePlayer(e)); }
+        if(mc.player!=null&&mc.player.getUUID().equals(uuid))return;
+        if(id.isEmpty()) { var p=PLAYERS.get(uuid);if(p!=null)p.stop(); }
+        else {
+            var e=EmoteResources.REGISTRY.get(id);if(e==null)return;
+            var p=new EmotePlayer(e);p.seek(elapsed/1000.0);PLAYERS.put(uuid,p);ENTITIES.put(uuid,mc.level.getPlayerByUUID(uuid));
+        }
     }
     public static void play(String id) {
-        Minecraft mc=Minecraft.getInstance(); if(mc.player==null) return;
+        Minecraft mc=Minecraft.getInstance();synchronizeWorld(mc);if(mc.player==null)return;
         var emote=EmoteResources.REGISTRY.get(id); if(emote==null) return;
         selected=id; PLAYERS.put(mc.player.getUUID(),new EmotePlayer(emote));
         if(savedCamera==null&&EmoteConfig.get().firstPerson==EmoteConfig.FirstPerson.THIRD_PERSON_CAMERA&&mc.options.getCameraType().isFirstPerson()) {
             savedCamera=mc.options.getCameraType(); mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
         }
         lastPosition=mc.player.position();
-        boolean shared=sender.apply(id);
+        boolean shared=sender.apply(id);sharedLocal=shared;
         if(!shared&&!mc.hasSingleplayerServer()&&!hinted) {
-            hinted=true; mc.player.displayClientMessage(Component.translatable("text.quarkos_emotes.local_only"),false);
+            hinted=true;hintCount++; mc.player.displayClientMessage(Component.translatable("text.quarkos_emotes.local_only"),false);
         }
     }
     public static void preview(String id) {
-        Minecraft mc=Minecraft.getInstance(); var emote=EmoteResources.REGISTRY.get(id);
-        if(mc.player!=null&&emote!=null) PLAYERS.put(mc.player.getUUID(),new EmotePlayer(emote));
+        Minecraft mc=Minecraft.getInstance();synchronizeWorld(mc);var emote=EmoteResources.REGISTRY.get(id);
+        if(mc.player!=null&&emote!=null) {
+            if(sharedLocal) {sender.apply("");sharedLocal=false;}
+            restoreCamera(mc);PLAYERS.put(mc.player.getUUID(),new EmotePlayer(emote));
+        }
     }
     public static void stop() {
         Minecraft mc=Minecraft.getInstance(); if(mc.player==null) return;
-        var p=PLAYERS.get(mc.player.getUUID()); if(p!=null&&!p.stopping()) { p.stop(); sender.apply(""); }
+        var p=PLAYERS.get(mc.player.getUUID());if(p!=null)p.stop();
+        if(sharedLocal) {sender.apply("");sharedLocal=false;}
+    }
+    public static void reload() {
+        Minecraft mc=Minecraft.getInstance();
+        if(!mc.isSameThread()) {mc.execute(EmotesClient::reload);return;}
+        stop();
+        if(mc.player!=null) {PLAYERS.remove(mc.player.getUUID());ENTITIES.remove(mc.player.getUUID());}
+        restoreCamera(mc);
+    }
+    public static void resourcesReloaded() {
+        var it=PLAYERS.entrySet().iterator();
+        while(it.hasNext()) {
+            var entry=it.next();var replacement=EmoteResources.REGISTRY.get(entry.getValue().emote().id());
+            if(replacement==null||entry.getValue().stopping()) {it.remove();ENTITIES.remove(entry.getKey());}
+            else entry.setValue(entry.getValue().rebind(replacement));
+        }
     }
     private static void restoreCamera(Minecraft mc) { if(savedCamera!=null) { mc.options.setCameraType(savedCamera); savedCamera=null; } }
+    private static void synchronizeWorld(Minecraft mc) {
+        boolean sameConnection=connection==mc.getConnection();
+        if(!sameConnection) {connection=mc.getConnection();hinted=false;hintCount=0;}
+        if(level!=mc.level||localEntity!=mc.player) {
+            if(sharedLocal&&sameConnection&&mc.getConnection()!=null)sender.apply("");sharedLocal=false;
+            level=mc.level;localEntity=mc.player;PLAYERS.clear();ENTITIES.clear();lastPosition=null;restoreCamera(mc);
+        }
+    }
     public static void tick(Minecraft mc) {
         if(!ready) { ready=true; EmoteConfig.load(mc.gameDirectory.toPath()); }
-        if(level!=mc.level) { level=mc.level; PLAYERS.clear(); hinted=false; lastPosition=null; restoreCamera(mc); }
+        synchronizeWorld(mc);
+        if(mc.screen!=null&&!ClientProofHooks.visual()) {if(!(mc.screen instanceof EmoteConfigScreen))stop();restoreCamera(mc);}
+        if(mc.player!=null&&!mc.player.isAlive())restoreCamera(mc);
         if(mc.player!=null) {
+            boolean activated=false;
             while(OPEN.consumeClick()) {
-                if(mc.screen==null) { stop(); mc.setScreen(new EmoteWheelScreen()); }
+                if(mc.screen==null&&!activated) {stop();mc.setScreen(new EmoteWheelScreen());activated=true;}
             }
             for(int i=0;i<FAVORITES.length;i++) while(FAVORITES[i].consumeClick()) {
-                if(mc.screen==null&&i<EmoteConfig.get().favorites.size()) play(EmoteConfig.get().favorites.get(i));
+                if(mc.screen==null&&!activated&&i<EmoteConfig.get().favorites.size()) {play(EmoteConfig.get().favorites.get(i));activated=true;}
             }
             var local=PLAYERS.get(mc.player.getUUID());
-            if(local!=null&&!ClientHarness.active()) {
+            if(local!=null&&!ClientProofHooks.visual()) {
                 var o=mc.options;
                 boolean moving=o.keyUp.isDown()||o.keyDown.isDown()||o.keyLeft.isDown()||o.keyRight.isDown()
                         ||(lastPosition!=null&&mc.player.position().distanceToSqr(lastPosition)>.0001);
@@ -90,18 +134,24 @@ public final class EmotesClient {
         }
         var it=PLAYERS.entrySet().iterator();
         while(it.hasNext()) {
-            var entry=it.next(); var p=entry.getValue(); p.tick();
+            var entry=it.next();var p=entry.getValue();
+            var entity=mc.level==null?null:mc.level.getPlayerByUUID(entry.getKey());
+            Object previous=ENTITIES.put(entry.getKey(),entity);
+            if(entity==null||!entity.isAlive()||(previous!=null&&previous!=entity)) {it.remove();ENTITIES.remove(entry.getKey());continue;}
+            p.tick();
+            if(mc.player!=null&&entry.getKey().equals(mc.player.getUUID())&&p.stopping()&&sharedLocal) {
+                sender.apply("");sharedLocal=false;
+            }
             if(EmoteConfig.get().playSounds&&mc.level!=null&&(EmoteConfig.get().showOthers||mc.player!=null&&entry.getKey().equals(mc.player.getUUID()))) {
-                var entity=mc.level.getPlayerByUUID(entry.getKey());
                 for(var s:p.sounds()) if(entity!=null) {
                     Identifier id=Identifier.tryParse(s.id()); if(id!=null) mc.getSoundManager().play(new SimpleSoundInstance(
                             id,SoundSource.PLAYERS,Math.clamp(s.volume()*EmoteConfig.get().soundVolume,0,4),Math.clamp(s.pitch(),.1f,4),
                             RandomSource.create(),false,0,SoundInstance.Attenuation.LINEAR,entity.getX(),entity.getY(),entity.getZ(),false));
                 }
             } else p.sounds();
-            if(p.finished()) it.remove();
+            if(p.finished()) {it.remove();ENTITIES.remove(entry.getKey());}
         }
         if(mc.player==null||!PLAYERS.containsKey(mc.player.getUUID())) restoreCamera(mc);
-        ClientHarness.tick(mc);
+        ClientProofHooks.tick(mc);
     }
 }

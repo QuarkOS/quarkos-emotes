@@ -49,8 +49,9 @@ public final class ClientHarness {
         return Math.min(time,Math.max(0,e.length()-.05));
     }
     public static boolean active() { return Boolean.getBoolean("quarkos_emotes.harness"); }
-    public static void recordHand(boolean changed) { if(active())handMoved|=changed; }
+    public static void recordHand(boolean changed) { MultiplayerHarness.recordHand(changed);if(active())handMoved|=changed; }
     public static void record(int entity,boolean changed) {
+        MultiplayerHarness.record(entity,changed);
         var mc=Minecraft.getInstance(); if(active()&&mc.player!=null&&mc.player.getId()==entity) moved|=changed;
     }
     public static void tick(Minecraft mc) {
@@ -193,6 +194,9 @@ public final class ClientHarness {
             EmotesClient.stop();
         }
         index++;wait=0;ticks=0;
+    }
+    public static Path screenshot(String name) throws java.io.IOException {
+        Path path=directory().resolve(name+".png");Files.createDirectories(path.getParent());Files.deleteIfExists(path);pending=path;return path;
     }
     private static Path directory() { return Path.of(System.getProperty("quarkos_emotes.shots","build/shots")); }
     /** At GameRenderer TAIL: includes deferred GUI and the fully rendered world. */

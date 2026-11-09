@@ -7,6 +7,7 @@
   "authors": [
     "Emilio Schwaiger / QuarkOS"
   ],
+  "contributors": ["Blockato (emote animation)"],
   "license": "MIT",
   "icon": "assets/quarkos_emotes/icon.png",
   "environment": "*",

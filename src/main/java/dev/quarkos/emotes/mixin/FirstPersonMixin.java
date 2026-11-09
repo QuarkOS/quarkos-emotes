@@ -35,7 +35,7 @@ public abstract class FirstPersonMixin {
         if(p!=null) {
             float x=arm.xRot,y=arm.yRot,z=arm.zRot;
             EmotePose.apply(arm,p.pose(.5).get(bone),(float)p.weight(.5));
-            dev.quarkos.emotes.harness.ClientHarness.recordHand(Math.abs(arm.xRot-x)+Math.abs(arm.yRot-y)+Math.abs(arm.zRot-z)>.001);
+            dev.quarkos.emotes.ClientProofHooks.recordHand(Math.abs(arm.xRot-x)+Math.abs(arm.yRot-y)+Math.abs(arm.zRot-z)>.001);
         }
     }
 }

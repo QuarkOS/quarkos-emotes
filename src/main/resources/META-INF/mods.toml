@@ -7,6 +7,7 @@ modId = "quarkos_emotes"
 version = "${version}"
 displayName = "QuarkOS Emotes"
 authors = "Emilio Schwaiger / QuarkOS"
+credits = "Blockato (emote animation)"
 description = '''Resource-pack emotes with a radial wheel and optional multiplayer sharing.'''
 displayTest = "IGNORE_ALL_VERSION"
 logoFile = "assets/quarkos_emotes/icon.png"

@@ -16,7 +16,8 @@ public final class FabricEmotesClient implements ClientModInitializer {
             @Override public Identifier getFabricId() { return Identifier.fromNamespaceAndPath("quarkos_emotes","emotes"); }
             @Override public void onResourceManagerReload(ResourceManager manager) { new EmoteResources().onResourceManagerReload(manager); }
         });
-        ClientPlayNetworking.registerGlobalReceiver(FabricNetwork.Broadcast.TYPE,(packet,context)->EmotesClient.receive(packet.player(),packet.id()));
+        ClientPlayNetworking.registerGlobalReceiver(FabricNetwork.Broadcast.TYPE,(packet,context)->context.client().execute(()->EmotesClient.receive(packet.player(),packet.id(),packet.elapsed())));
+        EmotesClient.capability(()->ClientPlayNetworking.canSend(FabricNetwork.Request.TYPE));
         EmotesClient.sender(id->{
             if(!ClientPlayNetworking.canSend(FabricNetwork.Request.TYPE)) return false;
             ClientPlayNetworking.send(new FabricNetwork.Request(id)); return true;

@@ -9,6 +9,16 @@ public final class EmotePlayer {
     private final Emote emote;
     private double elapsed, stopTime=Double.NaN, frozen=Double.NaN, previous=-1e-9;
     public EmotePlayer(Emote emote) { this.emote=emote; }
+    /** Resume tracking without replaying old sounds or freezing the animation. */
+    public void seek(double seconds) {
+        if(!Double.isFinite(seconds)||seconds<0)throw new IllegalArgumentException("Invalid elapsed time");
+        elapsed=seconds;previous=seconds;frozen=Double.NaN;stopTime=Double.NaN;
+        if(emote.loop()==Emote.Loop.ONCE&&elapsed>=emote.length()) { frozen=emote.length();stopTime=emote.length(); }
+    }
+    /** Resource reload replaces definitions without replaying already emitted sound events. */
+    public EmotePlayer rebind(Emote definition) {
+        var next=new EmotePlayer(definition);next.seek(elapsed);return next;
+    }
     public Emote emote() { return emote; }
     public void freeze(double seconds) { frozen=seconds; elapsed=Math.max(BLEND_SECONDS,seconds); }
     public void stop() { if(Double.isNaN(stopTime)) { frozen=time(0); stopTime=elapsed; } }

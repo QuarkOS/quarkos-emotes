@@ -29,7 +29,7 @@ loom {
     runConfigs.all {
         preferGradleTask = true
         generateRunConfig = true
-        runDirectory = if (sc.current.version == "1.21.11") {
+        runDirectory = providers.gradleProperty("runDir").orNull?.let { rootProject.file(it) } ?: if (sc.current.version == "1.21.11") {
             rootProject.file("run")
         } else {
             rootProject.file("run/${sc.current.version}")
@@ -100,14 +100,14 @@ tasks {
         systemProperty("quarkos_emotes.shots", shots)
         systemProperty("quarkos_emotes.loader", "fabric")
         systemProperty("quarkos_emotes.guiScale", providers.gradleProperty("guiScale").orNull ?: "0")
-        if (providers.gradleProperty("harness").orNull == "true") {
+        if (name == "runClient" && providers.gradleProperty("harness").orNull == "true") {
             systemProperty("quarkos_emotes.harness", "true")
             val wide = providers.gradleProperty("wide").orNull == "true"
             val width = providers.gradleProperty("width").orNull ?: if (wide) "1920" else "960"
             val height = providers.gradleProperty("height").orNull ?: if (wide) "1080" else "540"
             args("--width", width, "--height", height)
             // Same offline player as the other head shots, so the default skin does not change.
-            args("--username", "Player546")
+            args("--username", providers.gradleProperty("username").orNull ?: "Player546")
         }
         val only = providers.gradleProperty("only").orNull
         if (!only.isNullOrBlank()) {
@@ -131,4 +131,11 @@ tasks {
             eula.writeText("eula=true\n")
         }
     }
+}
+
+apply(from = rootProject.file("gradle/mp-runs.gradle.kts"))
+
+tasks.named<Jar>("jar") {
+    from(rootProject.file("LICENSE")) { into("META-INF") }
+    exclude("**/*.bbmodel", "**/*.py", "**/*.sh", "**/*Test.class", "**/test/**", "dev/quarkos/emotes/harness/**")
 }

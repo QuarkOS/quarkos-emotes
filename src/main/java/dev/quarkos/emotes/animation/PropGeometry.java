@@ -33,9 +33,11 @@ public record PropGeometry(String texture,int textureWidth,int textureHeight,Lis
                     if(uv.size()!=2)throw new IllegalArgumentException("Expected box UV [u,v]");
                     Vec3 size=vec(c,"size",Vec3.ZERO);
                     if(size.x()<0||size.y()<0||size.z()<0)throw new IllegalArgumentException("Negative cube size");
+                    double inflate=c.has("inflate")?c.get("inflate").getAsDouble():0;
+                    if(!Double.isFinite(inflate))throw new IllegalArgumentException("Non-finite inflate");
                     cubes.add(new Cube(vec(c,"origin",Vec3.ZERO),size,uv.get(0).getAsInt(),uv.get(1).getAsInt(),
                             vec(c,"pivot",Vec3.ZERO),vec(c,"rotation",Vec3.ZERO),bool(c,"mirror",bool(b,"mirror",false)),
-                            c.has("inflate")?c.get("inflate").getAsDouble():0));
+                            inflate));
                 }
                 bones.add(new Bone(name,b.has("parent")?b.get("parent").getAsString():null,vec(b,"pivot",Vec3.ZERO),vec(b,"rotation",Vec3.ZERO),cubes));
             }

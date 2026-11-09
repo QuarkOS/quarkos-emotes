@@ -365,3 +365,143 @@ Parent follow-up:
 3. Retain dedicated-server startup, vanilla-server fallback, resource reload,
    custom geometry/texture, tracking/reconnect and GUI-scale checks from E4/E5.
    Parent reviews/stages/commits this worktree; no commit was attempted here.
+
+## E7 — multiplayer proof harness and release hardening (2026-11-10)
+
+Implemented against the parent's `main @ 0bfc47c`. Read all shared Java runtime,
+render/mixin, animation, config, networking and harness code, both loader build
+scripts, metadata, existing tests and asset/import validation tools. No Gradle,
+Minecraft/server launch, commit, or write to `.git` in this run. Parent retains
+real build/run/commit ownership. Full instructions: `docs/MP_PROOF.md`.
+
+Proof deliverables:
+
+- Both loaders have dedicated `runServer` wiring; Forge now registers its server
+  run with both runtime and dev proof source sets. Shared run script handles
+  `-PrunDir`, `-Pport` (25599 default), EULA acceptance, offline mode, flat creative
+  peaceful world, loopback binding, console input, and server heap. Client-only
+  username/window/harness arguments cannot reach the dedicated server.
+- `-PserverHarness=true` logs `EMOTE_SERVER play/stop player=... id=...`, including
+  cleanup broadcasts, and places A/B three blocks apart through the server's
+  command dispatcher. No client operator privilege is required. The game JVM
+  property `quarkos_emotes.disableServer=true` skips channel/payload registration
+  on both loaders. `-PdisableServer=true` or the Gradle `-D` property forwards it;
+  the proof's vanilla mode uses it while keeping harness placement enabled.
+- Client `-PjoinServer=host:port -Pusername=A|B -Prole=actor|viewer` connects from
+  title, handles accessibility onboarding and polls the real tab list. Actor
+  plays wave, then bigdance for five seconds (over a complete loop), then holds
+  the ordinary forward key. Movement cancellation is NOT bypassed by this
+  harness. Viewer observes actual remote EmotePlayer starts/stops and times,
+  validates three-block placement and changed bones in the remote render hook,
+  and captures `mp-viewer-wave.png` / `mp-viewer-bigdance.png` without freezing or
+  manufacturing remote playback. Expected summaries: actor 4/0, viewer 10/0.
+- `-Pvanilla=true` asserts channel unavailable, local playback and animated hands,
+  exactly one displayed hint across two plays, no disconnect, and completed
+  `mp-vanilla-hint.png`. Expected summary: 7/0. Disconnects, exceptions, screenshot
+  failures and wall-clock timeouts cannot produce a successful summary.
+- `tools/mp_proof.sh LOADER VERSION OUT [sync|vanilla] [PORT]` starts server, waits
+  for Done, starts viewer and waits for its join before actor, collects logs and
+  screenshots, stops server and cleans up process groups. Uses xvfb-run,
+  --no-daemon, 1024 MiB Gradle / 1536 MiB client heaps, distinct run directories
+  and distinct project caches to avoid Gradle's long-running task lock. Server
+  startup builds all runtime/proof/resources; clients exclude those build tasks
+  and reuse the completed outputs, avoiding compilation races with live JVMs. Seeds
+  copied options with onboarding/focus pause/vsync disabled. Rejects old evidence.
+  `check_mp_proof.py` requires complete assertions, successful summaries, both
+  server play relays plus stop, screenshots, and no ERROR logs.
+
+Audit findings and fixes:
+
+- Missing late-tracker playback: server now keeps bounded identifier/start-time
+  state and actual vanilla entity tracker sets. Common addPairing/removePairing
+  mixins cover both loaders; a new tracker receives current emote plus bounded
+  elapsed milliseconds. Client seek advances normally and skips historical
+  sounds. Natural one-shot endings now send stop, preventing stale server state.
+  Server tick cleanup clears state/rate records/trackers on disconnect, death,
+  entity replacement/respawn and dimension change; shutdown clears all state.
+  Protocol is v2: Fabric request_v2/play_v2 IDs and Forge protocol version 2.
+- Existing bounded UTF (128), identifier grammar and separate play/stop rate
+  budgets remain enforced. Unknown server IDs and invalid elapsed values are
+  ignored; no animation/path data is loaded from a packet. Fabric explicitly
+  schedules both directions on the game thread; Forge uses consumerMainThread
+  with packet directions enforced. Common server code has no client imports.
+- Remote looping states previously survived unload forever. Client state now
+  removes unloaded/dead/replaced entities, along with identity references.
+  Lifecycle synchronization also runs BEFORE accepting a packet or starting
+  playback: otherwise a valid late-join packet arriving before the first tick
+  in a new world would be cleared by that tick's world-change handling.
+- Resource apply is confined to the client thread. Reload cancels/broadcasts
+  local playback and restores its camera before texture release; remote active
+  players rebind to replacement definitions at current elapsed time, without
+  replaying old sounds. Removed IDs/stopping states are discarded. Existing
+  geometry/model caches and registered local textures are invalidated/released.
+  Added rejection of non-finite geometry inflation before ModelPart creation.
+- Camera restoration covers world/player replacement, disconnect, death, any
+  open screen, reload and normal finish. Config previews stop previous shared
+  playback before replacing the local player, preventing a remote stuck loop.
+  Hint lifetime now follows the connection, surviving dimension/respawn changes.
+- Corrupt/empty config is backed up as `.corrupt-<time>` before default recovery;
+  each load starts with fresh defaults. Existing enum/list/volume normalization
+  and atomic save remain. Overlapping emote bindings are drained with one action
+  per tick (wheel first, then first favorite), avoiding multiple simultaneous
+  play requests. Keys remain rebindable in vanilla Controls; favorites default
+  unbound. Other mods can still choose B: the user must rebind a conflict.
+- Proof implementation now compiles in a separate `proof` source set. Runtime
+  code has small opt-in interfaces/reflection hooks, so release main/source jars
+  omit harness classes without dangling static references. Both binary jars now
+  include META-INF/LICENSE and exclude test/dev assets. Added MIT/author/icon,
+  both-side Fabric environment, optional Forge display-test and placeholder
+  checks in `tools/audit_release.py`; added Blockato contributor/credits metadata.
+  No authoritative contact/project URLs were supplied; optional links remain
+  absent, with no invented or placeholder URL shipped.
+- `tools/check_compile.py` replaces the old temporary verifier. It applies BOTH
+  directions of the Stonecutter Identifier/ResourceLocation and
+  AvatarRenderer/PlayerRenderer substring replacements, strips inactive branches,
+  selects the correct Authlib version, and compiles runtime and proof separately.
+  Grep found no further executable getPlayerRenderer/ResourceLocation substring
+  victims; the existing explanatory getPlayerRenderer comment is harmless.
+
+Validation (without Gradle):
+
+- Four-target cached-jar `javac --release 21 -proc:none`, compiling runtime then
+  proof against it, succeeds for Fabric 1.21.1 / 1.21.11 and Forge 52.1.20 /
+  61.2.4. Runtime class output contains no harness classes. Existing deprecated
+  loader API and unchecked renderer-cast warnings remain. Inspected javap of
+  both versions: ServerEntity entity/addPairing/removePairing and MinecraftServer
+  tickChildren/stopServer signatures match the new common mixins.
+- 43/43 pure Java JUnit tests pass with cached Gson/JUnit and SLF4J API using
+  `/tmp/e7_test.py`. Includes rate-bound/reset checks, elapsed state updates and
+  removal, late loop/hold/expired-once seeking, skipped historical sounds,
+  resource definition rebinding, non-finite inflate rejection, and malformed
+  config backup/default recovery plus normalization. Existing 34 tests retained.
+- 33/33 Python tests pass (`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover
+  -s tools -v`): existing 26 plus bidirectional preprocessing, incomplete/failed
+  evidence rejection and binary release audit fixtures. Asset validator still
+  reports 16 valid built-ins / 0 errors; animation/prop payloads are unchanged.
+- `bash -n tools/mp_proof.sh` and `git diff --check` pass. Exercised shell startup,
+  separate directories, FIFO stop, summaries/evidence checks and cleanup with
+  MOCK Gradle/xvfb processes in a temporary copy, for sync and vanilla modes.
+  This validates orchestration only; it is NOT a multiplayer game proof.
+
+Parent TODO / release gates:
+
+1. Run real four-target Gradle build/test tasks. In particular validate Kotlin run
+   wiring, proof source-set/Forge dev-mod classpaths, Stonecutter generation,
+   common Mixin application/remapping and dedicated-server class loading. javac
+   cannot validate these. Re-run the existing visual harness after the source-set
+   split. Audit the four new BINARY jars with tools/audit_release.py; cached/pre-E7
+   jars are not evidence of these packaging changes.
+2. Run tools/mp_proof.sh for sync and vanilla on each loader/version, using fresh
+   output directories. Require game summaries and EMOTE_MP_PROOF PASS, review all
+   screenshots and actual logs. No live E7 proof or new screenshots were produced
+   here. Strict ERROR checking intentionally surfaces launch/environment errors.
+3. Exercise late join and tracking leave/re-enter while bigdance loops. Require
+   nonzero EMOTE_SERVER track elapsed and matching advancing remote phase; test
+   respawn, dimension change, death, disconnect/reconnect and vanilla peers. The
+   default two-player script automates play/stop/movement, not these scenarios.
+4. Exercise F3+T during local/remote animation, removed/changed resource IDs and
+   local prop textures; verify local stop/camera restoration, remote rebinding
+   and texture release. Check camera on death/disconnect/open screens, Controls
+   rebinding conflicts, Steve/Alex, armor/capes/items and first-person restoration.
+5. Supply verified release contact/source/issues URLs if desired, review/stage
+   and commit the working tree. No git write or commit was attempted.
