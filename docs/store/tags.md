@@ -9,6 +9,7 @@ that any loader/game combination has passed its build or client checks.
 | Mod ID | `quarkos_emotes` |
 | Version | `1.0.0` |
 | Author | Emilio Schwaiger / QuarkOS |
+| Animator credit | Blockato — wave, thinking, tableflip, facepalm, clap for QuarkOS |
 | License | MIT |
 | Modrinth project type | Mod |
 | Modrinth categories | `decoration`, `utility` |

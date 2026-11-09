@@ -9,9 +9,11 @@ public final class EmotePose {
         var playback=EmotesClient.entity(entityId); if(playback==null) return;
         var pose=playback.pose(partial); float weight=(float)playback.weight(partial);
         double[] before=dev.quarkos.emotes.harness.ClientHarness.active()?snapshot(model):null;
-        apply(model.head,pose.get("head"),weight); apply(model.body,pose.get("body"),weight);
-        apply(model.rightArm,pose.get("right_arm"),weight); apply(model.leftArm,pose.get("left_arm"),weight);
-        apply(model.rightLeg,pose.get("right_leg"),weight); apply(model.leftLeg,pose.get("left_leg"),weight);
+        var parts=java.util.Map.of("head",model.head,"body",model.body,"right_arm",model.rightArm,
+                "left_arm",model.leftArm,"right_leg",model.rightLeg,"left_leg",model.leftLeg);
+        var baseline=new java.util.LinkedHashMap<String,Emote.Pose>();
+        parts.forEach((name,part)->baseline.put(name,current(part)));
+        PoseMath.flat(baseline,pose,weight).forEach((name,result)->set(parts.get(name),result));
         if(before!=null)dev.quarkos.emotes.harness.ClientHarness.record(entityId,changed(before,snapshot(model)));
     }
     private static double[] snapshot(HumanoidModel<?> m) {
@@ -27,10 +29,16 @@ public final class EmotePose {
     }
     public static void apply(ModelPart part,Emote.Pose pose,float weight) {
         if(pose==null) return;
-        Vec3 r=BedrockAxes.rotation(pose.rotation()), p=BedrockAxes.position(pose.position()), s=pose.scale();
-        part.xRot+=(float)(r.x()-part.xRot)*weight; part.yRot+=(float)(r.y()-part.yRot)*weight; part.zRot+=(float)(r.z()-part.zRot)*weight;
+        set(part,PoseMath.additive(current(part),pose,weight));
+    }
+    private static Emote.Pose current(ModelPart part) {
+        return new Emote.Pose(new Vec3(part.xRot,part.yRot,part.zRot),new Vec3(part.x,part.y,part.z),new Vec3(part.xScale,part.yScale,part.zScale));
+    }
+    private static void set(ModelPart part,Emote.Pose blended) {
+        Vec3 r=blended.rotation(),p=blended.position(),s=blended.scale();
+        part.xRot=(float)r.x(); part.yRot=(float)r.y(); part.zRot=(float)r.z();
         // Vanilla resets part positions before each setupAnim; offsets remain in model pixels.
-        part.x+=(float)p.x()*weight; part.y+=(float)p.y()*weight; part.z+=(float)p.z()*weight;
-        part.xScale=1+(float)(s.x()-1)*weight; part.yScale=1+(float)(s.y()-1)*weight; part.zScale=1+(float)(s.z()-1)*weight;
+        part.x=(float)p.x(); part.y=(float)p.y(); part.z=(float)p.z();
+        part.xScale=(float)s.x(); part.yScale=(float)s.y(); part.zScale=(float)s.z();
     }
 }

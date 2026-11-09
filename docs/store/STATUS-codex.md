@@ -199,3 +199,16 @@ current exports also change some loop modes; the importer preserves their
 standard `loop` field. Client rendering, classic/slim skin appearance, prop
 anchoring, and sound playback still require in-game verification; numerical
 rig checks do not establish runtime compatibility.
+
+
+## E4 integration update — 2026-11-09
+
+This update supersedes the earlier content/intake TODOs above. The runtime now
+ships exactly 16 emotes: five unchanged one-shot Blockato exports (wave,
+thinking, tableflip, facepalm, clap), plus the eleven retained E2 animations.
+The previous `table_flip` ID and its flat file are replaced by `tableflip`.
+English translations are merged into `lang/en_us.json`; the fragment is removed.
+Folder discovery, sidecars, geometry/PNG props, wheel/harness IDs, credits and
+store drafts are updated. The importer preserves bone names/export bytes and
+backs up/copies runtime folders and sidecars; proof/authoring files are excluded.
+See the root `STATUS-codex.md` E4 entry for verification and remaining checks.

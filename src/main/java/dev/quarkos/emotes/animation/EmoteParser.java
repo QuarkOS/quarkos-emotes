@@ -11,6 +11,9 @@ public final class EmoteParser {
     }
     private final List<String> warnings=new ArrayList<>();
     public Result parse(Reader reader, String namespace) {
+        return parse(reader,namespace,null,null);
+    }
+    public Result parse(Reader reader, String namespace, String filename, JsonObject sidecar) {
         warnings.clear(); List<Emote> emotes=new ArrayList<>(); List<String> errors=new ArrayList<>();
         try {
             JsonObject root=JsonParser.parseReader(reader).getAsJsonObject();
@@ -18,15 +21,16 @@ public final class EmoteParser {
             JsonObject animations=root.getAsJsonObject("animations");
             if (animations==null || animations.isEmpty()) throw new IllegalArgumentException("Missing animations object");
             for (var entry:animations.entrySet()) {
-                try { emotes.add(animation(entry.getKey(),entry.getValue().getAsJsonObject(),namespace)); }
+                try { emotes.add(animation(entry.getKey(),entry.getValue().getAsJsonObject(),namespace,filename,root.has("quarkos")?root.getAsJsonObject("quarkos"):sidecar)); }
                 catch (RuntimeException e) { errors.add(entry.getKey()+": "+e.getMessage()); }
             }
         } catch (RuntimeException e) { errors.add("Invalid animation file: "+e.getMessage()); }
         return new Result(List.copyOf(emotes),List.copyOf(warnings),List.copyOf(errors));
     }
-    private Emote animation(String key,JsonObject a,String ns) {
-        JsonObject q=object(a,"quarkos");
-        String id=text(q,"id",ns+":"+key.replaceFirst("^animation\\.",""));
+    private Emote animation(String key,JsonObject a,String ns,String filename,JsonObject metadata) {
+        JsonObject q=a.has("quarkos")?object(a,"quarkos"):metadata==null?new JsonObject():metadata;
+        String stem=filename==null?key.replaceFirst("^animation\\.",""):EmoteFiles.stem(filename);
+        String id=text(q,"id",ns+":"+stem);
         if (!id.contains(":")) id=ns+":"+id;
         if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+") || id.length()>128) throw new IllegalArgumentException("Invalid id "+id);
         Map<String,Emote.Bone> bones=new LinkedHashMap<>();
@@ -51,7 +55,7 @@ public final class EmoteParser {
         if(sound.has("id")) sounds.add(new Emote.Sound(number(sound.get("at")),text(sound,"id",""),
                 (float)(sound.has("volume")?number(sound.get("volume")):1),(float)(sound.has("pitch")?number(sound.get("pitch")):1)));
         sounds.sort(Comparator.comparingDouble(Emote.Sound::time));
-        return new Emote(id,text(q,"name",key.replaceFirst("^animation\\.","")),text(q,"icon","minecraft:note_block"),
+        return new Emote(id,text(q,"name",EmoteFiles.title(id.substring(id.indexOf(':')+1))),text(q,"icon","minecraft:note_block"),
                 text(q,"category","general"),length,looping,!q.has("cancel_on_move")||q.get("cancel_on_move").getAsBoolean(),
                 text(q,"easing","linear"),bones,sounds,q.has("prop")?q.getAsJsonObject("prop"):null);
     }

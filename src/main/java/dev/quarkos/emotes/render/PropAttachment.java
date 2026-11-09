@@ -17,7 +17,7 @@ public final class PropAttachment {
     public static void invalidate() { MODELS.clear(); }
     public interface Drawer { void draw(ItemStack item,PoseStack pose); }
     public static void draw(int entityId,float partial,HumanoidModel<?> model,PoseStack pose,Drawer drawer) {
-        var playback=EmotesClient.entity(entityId);if(playback==null||playback.emote().prop()==null)return;
+        var playback=EmotesClient.entity(entityId);if(playback==null||!playback.propsVisible(partial)||playback.emote().prop()==null||!playback.emote().props().isEmpty())return;
         var prop=playback.emote().prop();
         pose.pushPose();
         try {

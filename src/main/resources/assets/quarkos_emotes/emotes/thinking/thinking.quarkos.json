@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:thinking",
+  "name": "emote.quarkos_emotes.thinking",
+  "icon": "minecraft:book",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

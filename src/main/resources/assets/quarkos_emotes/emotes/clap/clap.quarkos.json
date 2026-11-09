@@ -1,0 +1,14 @@
+{
+  "id": "quarkos_emotes:clap",
+  "name": "emote.quarkos_emotes.clap",
+  "icon": "minecraft:note_block",
+  "category": "greeting",
+  "cancel_on_move": true,
+  "easing": "linear",
+  "sound": {
+    "id": "minecraft:entity.player.attack.strong",
+    "at": 0.6,
+    "volume": 0.5,
+    "pitch": 1
+  }
+}

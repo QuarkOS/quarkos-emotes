@@ -13,11 +13,10 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILTINS = ROOT / "src/main/resources/assets/quarkos_emotes/emotes"
-LANG = ROOT / "src/main/resources/assets/quarkos_emotes/lang/en_us.emotes.json"
-BONES = {"head", "body", "right_arm", "left_arm", "right_leg", "left_leg", "prop"}
+LANG = ROOT / "src/main/resources/assets/quarkos_emotes/lang/en_us.json"
+BONES = {"head", "body", "right_arm", "left_arm", "right_leg", "left_leg", "prop", "table"}
 CATEGORIES = {"greeting", "reaction", "dance", "pose", "fun"}
 RESOURCE_ID = re.compile(r"[a-z0-9_.-]+:[a-z0-9_./-]+\Z")
-ANIMATION_ID = re.compile(r"animation\.([a-z0-9_.-]+)\.([a-z0-9_/-]+)\Z")
 TIME = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?\Z")
 
 
@@ -107,7 +106,7 @@ def metadata(value, inferred_id, length):
                                   "easing", "sound", "prop", "notes"})
     if "id" in value:
         resource(value["id"], "quarkos.id")
-        require(value["id"] == inferred_id, "quarkos.id must match the animation key")
+        require(value["id"] == inferred_id, "quarkos.id must match the emote id")
     if "name" in value:
         require(isinstance(value["name"], str) and bool(value["name"].strip()),
                 "quarkos.name: expected a nonempty translation key")
@@ -155,48 +154,103 @@ def metadata(value, inferred_id, length):
                 resource(cube["texture"], where + ".texture")
 
 
+def animation_file(path):
+    return path.suffix == ".json" and not path.name.endswith((".geo.json", ".quarkos.json"))
+
+
+def stem(path):
+    return path.name.removesuffix(".json").removesuffix(".animation")
+
+
+def validate_geometry(path):
+    data = read_json(path)
+    obj(data, "geo", ("format_version", "minecraft:geometry"))
+    require(data["format_version"] == "1.12.0", "geo format_version must be 1.12.0")
+    require(isinstance(data["minecraft:geometry"], list) and data["minecraft:geometry"], "empty geometry")
+    names = set()
+    for geo in data["minecraft:geometry"]:
+        obj(geo, "geometry", ("description", "bones"))
+        desc = geo["description"]
+        for key in ("texture_width", "texture_height"):
+            require(type(desc.get(key)) is int and desc[key] > 0, "invalid " + key)
+        local_names = set()
+        for bone in geo["bones"]:
+            obj(bone, "geo bone", ("name",))
+            require(isinstance(bone["name"], str) and bone["name"] not in local_names, "duplicate/invalid geo bone")
+            local_names.add(bone["name"])
+            names.add(bone["name"])
+            for key in ("pivot", "rotation"):
+                vec3(bone.get(key, [0, 0, 0]), "geo bone." + key)
+            for cube in bone.get("cubes", []):
+                obj(cube, "cube", ("origin", "size", "uv"))
+                for key in ("origin", "size", "pivot", "rotation"):
+                    vec3(cube.get(key, [0, 0, 0]), "cube." + key)
+                require(all(n >= 0 for n in cube["size"]), "negative cube size")
+                require(isinstance(cube["uv"], list) and len(cube["uv"]) == 2
+                        and all(type(n) is int for n in cube["uv"]), "cube.uv: expected box UV [u, v]")
+    png = path.with_name(path.name.removesuffix(".geo.json") + ".png")
+    require(png.is_file(), f"missing prop texture {png}")
+    header = png.read_bytes()[:24]
+    require(len(header) == 24 and header[:8] == b"\x89PNG\r\n\x1a\n", "invalid PNG")
+    import struct
+    width, height = struct.unpack(">II", header[16:24])
+    for geo in data["minecraft:geometry"]:
+        require((width, height) == (geo["description"]["texture_width"], geo["description"]["texture_height"]), "PNG/geo dimension mismatch")
+    return names
+
+
 def validate(path):
-    return validate_data(read_json(path), path.name)
+    sidecar = path.with_name(stem(path) + ".quarkos.json")
+    side = read_json(sidecar) if sidecar.exists() else None
+    prop_bones = set()
+    for geo in path.parent.glob("*.geo.json"):
+        prop_bones.update(validate_geometry(geo))
+    data = read_json(path)
+    result = validate_data(data, path.name, sidecar=side, prop_bones=prop_bones)
+    animation = next(iter(data["animations"].values()))
+    extras = set(animation["bones"]) - (BONES - {"prop", "table"})
+    legacy = animation.get("quarkos", data.get("quarkos", side or {})).get("prop")
+    require(extras <= prop_bones or bool(legacy), f"unbound prop bones: {sorted(extras - prop_bones)}")
+    return result
 
 
-def validate_data(data, filename):
+def validate_data(data, filename, sidecar=None, prop_bones=(), namespace="quarkos_emotes"):
     """Validate an in-memory document without creating a temporary file."""
     path = Path(filename)
-    require(path.name.endswith(".animation.json"), "filename must end in .animation.json")
+    require(animation_file(path), "filename must be an animation JSON")
     obj(data, "root", ("format_version", "animations"), {"format_version", "animations", "quarkos"})
     require(data["format_version"] == "1.8.0", "format_version must be 1.8.0")
     animations = data["animations"]
     obj(animations, "animations")
     require(len(animations) == 1, "expected exactly one animation per file")
     key, animation = next(iter(animations.items()))
-    match = ANIMATION_ID.fullmatch(key)
-    require(match is not None, "animation key must be animation.<namespace>.<name>")
-    namespace, name = match.groups()
-    inferred_id = f"{namespace}:{name}"
-    require(path.name == name.rsplit("/", 1)[-1] + ".animation.json", "filename must match the animation name")
+    require(isinstance(key, str) and key.startswith("animation."), "animation key must start with animation.")
     obj(animation, key, ("animation_length", "loop", "bones"),
-        {"animation_length", "loop", "bones", "sound_effects"})
+        {"animation_length", "loop", "bones", "sound_effects", "quarkos"})
+    q = animation.get("quarkos", data.get("quarkos", sidecar or {}))
+    inferred_id = q.get("id", f"{namespace}:{stem(path)}")
+    resource(inferred_id, "emote id")
     length = animation["animation_length"]
     require(number(length) and 0 < length <= 3600,
             "animation_length must be a finite number in (0, 3600]")
     loop = animation["loop"]
     require(type(loop) is bool or loop == "hold_on_last_frame", "loop must be true, false, or hold_on_last_frame")
     bones = animation["bones"]
-    obj(bones, "bones", allowed=BONES)
+    obj(bones, "bones", allowed=BONES | set(prop_bones))
     require(bool(bones), "bones must not be empty")
     frames = 0
     for bone, tracks in bones.items():
-        obj(tracks, f"bones.{bone}", allowed={"rotation", "position"})
-        require(bool(tracks), f"bones.{bone}: expected rotation or position")
+        obj(tracks, f"bones.{bone}", allowed={"rotation", "position", "scale"})
+        require(bool(tracks), f"bones.{bone}: expected rotation, position or scale")
         for kind, values in tracks.items():
             frames += channel(values, length, f"bones.{bone}.{kind}")
     if "sound_effects" in animation:
         for time, event in timed_items(animation["sound_effects"], length, "sound_effects"):
-            obj(event, f"sound_effects@{time}", ("effect",), {"effect"})
-            resource(event["effect"], f"sound_effects@{time}.effect")
-    if "quarkos" in data:
-        metadata(data["quarkos"], inferred_id, length)
-    name_key = data.get("quarkos", {}).get("name")
+            for sound in event if isinstance(event, list) else [event]:
+                obj(sound, f"sound_effects@{time}", ("effect",), {"effect"})
+                resource(sound["effect"], f"sound_effects@{time}.effect")
+    metadata(q, inferred_id, length)
+    name_key = q.get("name")
     return inferred_id, length, str(loop).lower(), len(bones), frames, name_key
 
 
@@ -209,7 +263,7 @@ def main(argv=None):
     errors = []
     for path in args.paths or [BUILTINS]:
         if path.is_dir():
-            found = set(path.rglob("*.json"))
+            found = {p for p in path.rglob("*.json") if animation_file(p)}
             if not found:
                 errors.append(f"{path}: no JSON animation files found")
             files.update(found)
@@ -232,7 +286,7 @@ def main(argv=None):
             names = read_json(LANG)
             obj(names, str(LANG))
             for row in rows:
-                require(row[5] in names and isinstance(names[row[5]], str) and bool(names[row[5]].strip()),
+                require(row[5] is None or (row[5] in names and isinstance(names[row[5]], str) and bool(names[row[5]].strip())),
                         f"missing English name for {row[0]} ({row[5]})")
         except (Invalid, OSError, ValueError) as error:
             errors.append(f"{LANG}: {error}")

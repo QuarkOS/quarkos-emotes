@@ -16,6 +16,8 @@ public final class EmotePlayer {
         if(Double.isNaN(frozen)&&emote.loop()==Emote.Loop.ONCE&&elapsed>=emote.length()) stop();
     }
     public boolean finished() { return stopping() && elapsed-stopTime>=BLEND_SECONDS; }
+    /** Props disappear immediately on stop; only the player pose blends back to vanilla. */
+    public boolean propsVisible(double partialTicks) { return !stopping() && weight(partialTicks)>0; }
     public double time(double partialTicks) { return emote.wrap(Double.isNaN(frozen)?elapsed+partialTicks/20:frozen); }
     public double weight(double partialTicks) {
         double now=elapsed+partialTicks/20;

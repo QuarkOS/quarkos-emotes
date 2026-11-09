@@ -27,7 +27,7 @@ except ImportError:
 
 SOURCE = Path("/home/box/blockato/emotes")
 BACKUPS = Path(__file__).resolve().parent / "replaced"
-PROP_ALIASES = {"table", "prop_table", "item"}
+PLAYER_BONES = {"head", "body", "right_arm", "left_arm", "right_leg", "left_leg"}
 
 
 def slug(value):
@@ -68,36 +68,22 @@ def resolve_id(animation_name, source_file, source_root, ids):
 
 
 def normalize(document, animation_name, emote_id, existing=None):
-    """Copy payloads verbatim except for the animation key and prop bone aliases."""
+    """Split multi-animation files without changing animation keys or bone names."""
     result = deepcopy(document)
-    animation = result["animations"][animation_name]
-    validator.obj(animation, animation_name)
-    bones = animation.get("bones")
-    validator.obj(bones, "bones")
-    renamed = {}
-    for name, tracks in bones.items():
-        canonical = "prop" if name.lower() in PROP_ALIASES else name
-        validator.require(canonical not in renamed,
-                          f"prop bone collision: multiple bones map to {canonical!r}")
-        renamed[canonical] = tracks
-    animation["bones"] = renamed
-    result["animations"] = {f"animation.quarkos_emotes.{emote_id}": animation}
-    if existing is not None:
-        result.pop("quarkos", None)
-        if "quarkos" in existing:
-            result["quarkos"] = deepcopy(existing["quarkos"])
-    else:
-        result["quarkos"] = {
-            "id": f"quarkos_emotes:{emote_id}",
-            "name": f"emote.quarkos_emotes.{emote_id}",
-            "icon": "minecraft:paper",
-            "category": "fun",
-            "cancel_on_move": True,
-        }
-    warnings = []
-    if "prop" in renamed and not result.get("quarkos", {}).get("prop"):
-        warnings.append("prop bone retained but no quarkos.prop model is defined")
-    return result, warnings
+    result["animations"] = {animation_name: deepcopy(document["animations"][animation_name])}
+    return result, []
+
+
+def presentation(document, animation_name):
+    return document["animations"][animation_name].get("quarkos", document.get("quarkos"))
+
+
+def assets(folder):
+    """Only runtime files are imported: never projects, previews or clip reports."""
+    for path in sorted(folder.iterdir()):
+        if path.is_file() and (path.name.endswith(".geo.json") or
+                (path.suffix == ".png" and path.with_suffix(".geo.json").is_file())):
+            yield path
 
 
 @dataclass
@@ -114,6 +100,8 @@ class Entry:
     error: bool = False
     document: dict | None = None
     warnings: list[str] = field(default_factory=list)
+    metadata: dict | None = None
+    target: Path | None = None
 
 
 def describe(entry, animation):
@@ -134,12 +122,21 @@ def load_catalog(output):
     catalog = {}
     if not output.exists():
         return catalog
-    for path in sorted(output.glob("*.animation.json")):
+    for path in sorted(output.rglob("*.json")):
+        if not validator.animation_file(path):
+            continue
         row = validator.validate(path)
-        emote_id = path.name.removesuffix(".animation.json")
+        emote_id = validator.stem(path)
         validator.require(row[0] == f"quarkos_emotes:{emote_id}",
                           f"{path}: expected native quarkos_emotes id")
-        catalog[emote_id] = validator.read_json(path)
+        validator.require(emote_id not in catalog, f"duplicate catalog id {emote_id}")
+        document = validator.read_json(path)
+        key = next(iter(document["animations"]))
+        side = path.with_name(emote_id + ".quarkos.json")
+        metadata = presentation(document, key)
+        if metadata is None and side.exists():
+            metadata = validator.read_json(side)
+        catalog[emote_id] = (path, metadata)
     return catalog
 
 
@@ -177,11 +174,31 @@ def plan_import(source, output, allow_new=False, backup_root=BACKUPS):
                     continue
             entry.emote_id = emote_id
             try:
-                normalized, warnings = normalize(document, animation_name, emote_id, catalog.get(emote_id))
-                row = validator.validate_data(normalized, emote_id + ".animation.json")
+                normalized, warnings = normalize(document, animation_name, emote_id)
+                side = path.with_name(validator.stem(path) + ".quarkos.json")
+                delivered = validator.read_json(side) if side.exists() else None
+                existing = catalog.get(emote_id)
+                metadata = delivered if delivered is not None else existing[1] if existing and existing[1] is not None else {
+                    "id": f"quarkos_emotes:{emote_id}",
+                    "name": f"emote.quarkos_emotes.{emote_id}",
+                    "icon": "minecraft:paper", "category": "fun", "cancel_on_move": True,
+                }
+                prop_bones = set()
+                for geo in path.parent.glob("*.geo.json"):
+                    prop_bones.update(validator.validate_geometry(geo))
+                bones = animation.get("bones", {})
+                extras = set(bones) - PLAYER_BONES
+                missing = extras - prop_bones
+                if missing and not (metadata or {}).get("prop"):
+                    warnings.append("no geometry for prop bones: " + ", ".join(sorted(missing)))
+                row = validator.validate_data(normalized, emote_id + ".animation.json",
+                                              sidecar=metadata, prop_bones=extras | prop_bones)
+                validator.require(row[0] == f"quarkos_emotes:{emote_id}", "metadata id conflicts with destination filename")
                 entry.length, entry.loop, entry.bones, entry.keyframes = (
                     f"{row[1]:g}", row[2], str(row[3]), str(row[4]))
                 entry.document = normalized
+                entry.metadata = metadata
+                entry.target = existing[0] if existing else None
                 entry.warnings = warnings
                 entry.status = "replaced" if emote_id in catalog else "new"
                 entry.reason = f"animation {animation_name!r}"
@@ -200,23 +217,42 @@ def plan_import(source, output, allow_new=False, backup_root=BACKUPS):
 
 
 def write_entry(entry, output, backup):
-    target = output / (entry.emote_id + ".animation.json")
-    output.mkdir(parents=True, exist_ok=True)
-    if target.exists():
-        backup.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(target, backup / target.name)
-    # Finish serialization before touching the destination; replace it atomically.
-    payload = json.dumps(entry.document, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=output,
-                                         prefix=".blockato-", suffix=".tmp", delete=False) as stream:
-            temporary = Path(stream.name)
-            stream.write(payload)
-        os.replace(temporary, target)
-    finally:
-        if temporary is not None:
-            temporary.unlink(missing_ok=True)
+    folder = output / entry.emote_id
+    target = folder / (entry.emote_id + ".animation.json")
+    prior = entry.target
+    if prior is not None:
+        # Back up the complete old runtime folder (or flat animation + sidecar).
+        originals = [prior, prior.with_name(validator.stem(prior) + ".quarkos.json")]
+        if prior.parent != output:
+            originals.extend(assets(prior.parent))
+        for original in originals:
+            if original.is_file():
+                dest = backup / original.relative_to(output)
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(original, dest)
+    folder.mkdir(parents=True, exist_ok=True)
+    # Single-animation exports are copied byte-for-byte, including formatting.
+    original = validator.read_json(entry.source)
+    payload = (entry.source.read_bytes() if original == entry.document else
+               (json.dumps(entry.document, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"))
+    staged = {target: payload}
+    for asset in assets(entry.source.parent):
+        staged[folder / asset.name] = asset.read_bytes()
+    staged[folder / (entry.emote_id + ".quarkos.json")] = (
+        json.dumps(entry.metadata, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+    for dest, content in staged.items():
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=folder, prefix=".blockato-", suffix=".tmp", delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(content)
+            os.replace(temporary, dest)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+    if prior is not None and prior != target:
+        prior.unlink()
+        prior.with_name(validator.stem(prior) + ".quarkos.json").unlink(missing_ok=True)
 
 
 def print_report(entries, dry_run):

@@ -82,7 +82,7 @@ public final class ClientHarness {
             String name=e.id().split(":",2)[1].replace('/','_');
             if(!only.contains("")&&!only.contains(name)&&!only.contains(e.id())&&!only.contains("emote-"+name)) continue;
             list.add(new Shot("emote-"+name,e.id(),CameraType.THIRD_PERSON_FRONT,""));
-            if(name.equals("table_flip")||name.startsWith("dance_")) {
+            if(name.equals("tableflip")||name.startsWith("dance_")) {
                 list.add(new Shot("emote-"+name+"-back",e.id(),CameraType.THIRD_PERSON_BACK,""));
                 list.add(new Shot("emote-"+name+"-side",e.id(),CameraType.THIRD_PERSON_FRONT,"side"));
             }

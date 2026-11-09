@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:facepalm",
+  "name": "emote.quarkos_emotes.facepalm",
+  "icon": "minecraft:carved_pumpkin",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

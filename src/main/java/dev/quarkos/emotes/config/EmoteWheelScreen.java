@@ -32,7 +32,8 @@ public final class EmoteWheelScreen extends Screen {
     }
     private List<Emote> filtered() {
         String q=search==null?"":search.getValue().toLowerCase(Locale.ROOT);
-        var list=EmoteResources.REGISTRY.all();
+        var order=List.of("wave","thinking","tableflip","facepalm","clap","bow","salute","laugh","dab","sit","dance_groove","dance_elaborate","shrug","point","cheer","stretch");
+        var list=EmoteResources.REGISTRY.all().stream().sorted(Comparator.<Emote>comparingInt(e->{int i=order.indexOf(e.id().replace("quarkos_emotes:",""));return i<0?Integer.MAX_VALUE:i;}).thenComparing(Emote::id)).toList();
         if(favorites) list=EmoteConfig.get().favorites.stream().map(EmoteResources.REGISTRY::get).filter(Objects::nonNull).toList();
         return list.stream().filter(e->e.id().contains(q)||label(e).getString().toLowerCase(Locale.ROOT).contains(q)).toList();
     }

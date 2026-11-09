@@ -1,0 +1,14 @@
+{
+  "id": "quarkos_emotes:tableflip",
+  "name": "emote.quarkos_emotes.tableflip",
+  "icon": "minecraft:oak_planks",
+  "category": "fun",
+  "cancel_on_move": true,
+  "easing": "linear",
+  "sound": {
+    "id": "minecraft:block.wood.hit",
+    "at": 1.1,
+    "volume": 0.6,
+    "pitch": 1
+  }
+}

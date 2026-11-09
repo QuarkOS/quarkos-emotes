@@ -1,98 +1,62 @@
 # QuarkOS Emotes
 
-Expressive player animations for Minecraft, by **Emilio Schwaiger / QuarkOS**.
-Mod ID: `quarkos_emotes`. Version: **1.0.0**. License: **MIT**.
+Editable player emotes for Minecraft by **Emilio Schwaiger / QuarkOS**,
+with five built-in animations by Blockbench animator **Blockato**.
 
-This branch supplies the initial emote content and documentation. The runtime
-is developed in parallel; a successful four-target build and in-game review
-are still required before this is a verified release.
+The set contains **16 emotes**: `wave`, `thinking`, `tableflip`, `facepalm`,
+`clap`, `bow`, `cheer`, `dab`, `dance_elaborate` (Spotlight Dance),
+`dance_groove` (Groove), `laugh`, `point`, `salute`, `shrug`, `sit`, `stretch`.
 
-## Included animations
+Blockato's wave, thinking, tableflip, facepalm and clap play once. Tableflip
+includes a textured temporary table bound to the animation's `table` bone.
+Cheer, laugh and the two dances loop; sit holds its final pose until cancelled.
+The five Blockato exports and the table geometry/texture are unchanged from
+the animator's files. See [credits](CREDITS.md).
 
-Sixteen original, numeric Bedrock/Blockbench `.animation.json` files live in
-[`assets/quarkos_emotes/emotes`](src/main/resources/assets/quarkos_emotes/emotes/).
+## Targets and status
 
-| Emote | Length | Playback |
-| --- | --- | --- |
-| Wave | 2.2 s | Once |
-| Thinking | 3 s | Loop |
-| Facepalm | 2.8 s | Once |
-| Table Flip | 3.4 s | Hold final pose |
-| Clap | 1.2 s | Loop; two timed vanilla slap cues |
-| Bow | 2.6 s | Once |
-| Salute | 2.1 s | Once |
-| Laugh | 2 s | Loop |
-| Dab | 2.1 s | Once |
-| Sit | 2.2 s | Hold final pose |
-| Groove | 2 s | Loop |
-| Spotlight Dance | 8 s | Loop; steps, arm waves, full turn, hip sway |
-| Shrug | 2.4 s | Once |
-| Point | 2.4 s | Once |
-| Cheer | 2 s | Loop; visual hop and raised arms |
-| Stretch | 3.2 s | Once |
+Minecraft **1.21.1 and 1.21.11**, on **Fabric and Forge**, using Java **21+**.
+Use the artifact matching both your loader and exact game version.
+The parent verified the four Gradle builds and original 14 Java tests before
+this animator integration. New contract changes require another Gradle pass;
+visual and multiplayer verification remain release checks. This repository
+is release preparation, not a claim of published downloads.
 
-The table prop is authored from five cubes using the vanilla oak-plank
-texture. Sounds reference vanilla sound events; no audio or texture files
-are bundled here. These are initial Steve-rig animations pending visual
-review and possible replacement by the Blockbench animator's exports.
+Client installation provides local playback. A compatible server component
+and shared animation set are needed for synchronized playback. Installing the
+client alone does not make other players on vanilla servers see the animation.
 
-## Target compatibility
+The wheel supports paging, search and favorites; settings include sounds,
+movement cancellation and first-person behavior. Review current loader metadata
+for dependencies. No third-party animation library is introduced by this set.
 
-| Loader | Minecraft | Target loader build |
-| --- | --- | --- |
-| Fabric | 1.21.1 | Determined by runtime build |
-| Fabric | 1.21.11 | Determined by runtime build |
-| Forge | 1.21.1 | 52.1.20 |
-| Forge | 1.21.11 | 61.2.4 |
+## Author or replace emotes
 
-The build uses shared sources through Stonecutter, with 1.21.11 active and a
-separate `forge` branch. These are targets, not a claim that all four artifacts
-have passed testing. Use Java 21 or newer and the artifact matching both the
-loader and exact Minecraft version. Runtime dependencies and installation
-steps must be confirmed from the merged release metadata; this content set
-introduces no third-party runtime dependency.
-
-The intended environment is **client required, server optional**. A compatible
-server component is needed for synchronized playback; installing the client
-alone must not be described as making everyone on a vanilla server see the
-animation. Multiplayer behavior and controls await the runtime test pass.
-
-## Author and replace emotes
-
-Read [the animation specification](docs/ANIMATION_FORMAT.md) for Blockbench
-setup, axis conventions, interpolation, sounds, props, and examples.
-**Arm X = −90° means straight forward**, in degrees, with position offsets
-in pixels. The player rig has six sibling bones; `body` is not a root bone.
-
-The loading contract targets resource packs at
-`assets/<namespace>/emotes/<name>.animation.json` and loose files directly in
-`config/quarkos_emotes/emotes/` inside your Minecraft instance. Replacements
-keep the same filename, animation key, and canonical ID. Runtime loading and
-override behavior still need verification.
-
-Validate content locally using Python 3.10+ and its standard library:
+Read [the animation contract](docs/ANIMATION_FORMAT.md). The six player bones
+are siblings; transforms add to vanilla poses and preserve Steve/Alex pivots.
+Files use numeric Bedrock animation JSON. Flat `emotes/*.json` or
+`*.animation.json` and folder `emotes/<name>/*.animation.json` layouts work
+in resource packs and `config/quarkos_emotes/emotes/`. Put metadata in
+`<name>.quarkos.json` to keep Blockbench exports untouched. Props load every
+same-folder `.geo.json` plus its matching PNG, bind by geo bone name, and
+attach to the player root for the duration of the emote.
 
 ```sh
 python3 tools/validate_emotes.py
+python3 tools/import_blockato.py path/to/curated-intake --dry-run
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -v
 ```
 
-The validator prints a table and exits with status 1 on an error. It checks
-JSON/schema, bone names, times, vectors, interpolation, metadata, and the
-built-in English names. It cannot assess how a motion looks in Minecraft.
-The names in `lang/en_us.emotes.json` are a **merge fragment** for the code
-session, which must add them to the actual `en_us.json` language file.
+The importer supports preview, backups, folder assets and metadata preservation.
+English emote names are in the runtime `lang/en_us.json`.
 
-## Screenshots and release checks
+## Release checks
 
-> Screenshot placeholder: front-view gesture lineup — capture pending.
->
-> Screenshot placeholder: oak table flip and seated pose — capture pending.
->
-> Screenshot placeholder: emote selection interface and dance sequence — capture pending.
+The opt-in xvfb harness captures `emote-wave`, `emote-thinking`,
+`emote-tableflip` (front/back/side), `emote-facepalm`, `emote-clap`, the other
+emotes, the wheel/config UI and first-person wave. Screenshots and results
+from the parent's separate worktree are pending integration. Inspect both
+classic and slim skins, table UVs and floor placement, and end/cancel reset.
+Dedicated-server startup and two-client synchronization also need verification.
 
-No screenshots, client runs, Gradle builds, or network checks were performed
-by this content run. The parent session owns the four-target builds, Java
-tests, and xvfb client harness. See the
-[content handoff log](docs/store/STATUS-codex.md) for integration checks.
-
-[Changelog](CHANGELOG.md) · [Credits](CREDITS.md) · [License](LICENSE)
+[Changelog](CHANGELOG.md) · [License](LICENSE) · [Handoff log](STATUS-codex.md)

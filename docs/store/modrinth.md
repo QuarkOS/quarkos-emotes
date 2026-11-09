@@ -1,72 +1,52 @@
 # QuarkOS Emotes
 
-Wave hello, bow, celebrate, or let a facepalm do the talking. QuarkOS Emotes
-is a Minecraft player-animation project by **Emilio Schwaiger / QuarkOS**,
-with an open, editable Bedrock/Blockbench animation format.
+Wave hello, react with a facepalm or celebrate with a dance. QuarkOS Emotes
+is an editable Minecraft player-emote project by **Emilio Schwaiger / QuarkOS**.
 
-**Release preparation status:** version 1.0.0's initial content contains
-sixteen authored emotes. Runtime integration and testing are in progress;
-the target loaders and features below are not yet a verified compatibility
-claim. This page is draft store copy, not an announcement of a published build.
+**Release draft:** targets Minecraft **1.21.1 and 1.21.11**, **Fabric and Forge**,
+with Java **21+**. The parent verified the builds before the latest animator
+integration; another build and visual/multiplayer review are required before
+publication. This draft does not announce a published download.
 
-## Sixteen ways to react
+## Sixteen built-in emotes
 
-- **Greetings:** wave, clap, bow, salute, and point.
-- **Reactions:** thinking, facepalm, laugh, shrug, and cheer.
-- **Dance:** a two-second groove and an eight-second spotlight routine with
-  arm waves, steps, a full turn, and hip sway.
-- **Poses and fun:** sit, stretch, dab, and an oak table flip.
+`wave`, `thinking`, `tableflip`, `facepalm`, `clap`, `bow`, `cheer`, `dab`,
+`dance_elaborate` (Spotlight Dance), `dance_groove` (Groove), `laugh`, `point`,
+`salute`, `shrug`, `sit`, `stretch`.
 
-Thinking, clapping, laughing, dancing, and cheering repeat. Sit and table
-flip are authored to keep their final pose until cancelled. Short gestures
-include a lead-in and a recovery. The table is built from five textured
-cubes, and clap uses timed vanilla slap-like sounds. These effects still
-need renderer and sound verification in the client.
+**Blockato**, the Blockbench animator, authored wave, thinking, tableflip,
+facepalm and clap for QuarkOS. These five are one-shot exports, shipped
+unchanged with metadata sidecars. Tableflip includes Blockato's geometry
+and PNG texture, animated by its internal `table` bone. The prop follows
+the player's root and disappears as soon as playback stops or is cancelled. Cheer, laugh and both dances loop; sit holds until cancelled.
 
-The initial set uses the classic Steve rig. There are no finger or elbow
-bones: pointing uses the whole arm and close hand poses use small position
-offsets. Classic and slim player proportions need an in-game review before
-the final screenshots and release files are selected.
+The wheel offers paging, search and favorites, with settings for sound,
+movement cancellation and first-person behavior. The flat player rig preserves
+classic and slim model pivots. In-game appearance still needs review.
 
-## Make the gestures your own
+## Editable content
 
-The documented authoring workflow uses Blockbench's Bedrock entity/player
-rig and **Animation > Export Animations**. Animation files contain readable
-numeric rotation and position keys, standard loop modes, and an optional
-`quarkos` metadata block for names, icons, categories, sounds, and props.
+Use numeric Bedrock/Blockbench `.animation.json` files in resource packs or
+`config/quarkos_emotes/emotes/`. Flat and folder layouts are supported.
+Folder props use `.geo.json` plus matching `.png` files; metadata may live
+in `<name>.quarkos.json`, preserving the exported animation. The repository
+includes a format guide, an offline validator and an importer with preview
+and replacement backups.
 
-The runtime integration targets resource-pack replacements under
-`assets/<namespace>/emotes/` and a local
-`config/quarkos_emotes/emotes/` folder. Keep an emote's ID to replace it;
-choose a new ID to add a distinct animation. Loading, reload, and override
-behavior remain part of release verification.
+## Compatibility and shared playback
 
-The repository includes a Python validator and a full animation-format
-guide. The authored animation files are MIT licensed, so they can be studied
-and adapted under that license.
+Use the artifact matching your exact game version and loader. Environment:
+**client required, server optional**. Local emotes work on the client; shared
+playback needs compatible server synchronization and a shared animation set.
+Client installation alone does not make vanilla-server viewers see emotes.
+Final dependency and multiplayer instructions follow release verification.
 
-## Target versions and multiplayer
+## Screenshots pending
 
-Version 1.0.0 targets **Minecraft 1.21.1 and 1.21.11**, on **Fabric and Forge**.
-Use an artifact built for your exact version and loader, with Java 21 or
-newer. Required runtime dependencies will be specified by the final release
-metadata after the build matrix passes.
+Capture the gesture set, front/back/side tableflip, dances, sit, wheel and
+settings after the animator integration. Test Steve and Alex, prop textures
+and floor placement, cancellation and first-person view before selecting images.
 
-The intended environment is **client required, server optional**. Local
-playback and optional server-assisted synchronization are runtime goals
-under test. Do not expect players on a vanilla server to see your animations
-simply because you installed the client. A compatible shared animation set
-and verified synchronization support are needed for shared playback.
-
-## Screenshots
-
-> Screenshot placeholder: front-view wave, salute, and facepalm lineup.
->
-> Screenshot placeholder: seated player and oak table flip.
->
-> Screenshot placeholder: dance sequence and emote selection interface.
-
-Screenshots will be added after the client harness runs. No rendered images
-are represented by these placeholders.
-
-**Author:** Emilio Schwaiger / QuarkOS · **License:** MIT · **Version:** 1.0.0
+**Project:** Emilio Schwaiger / QuarkOS · **Animator:** Blockato (five emotes)
+· **License:** MIT · **Version:** 1.0.0 (release preparation).
+Vanilla item/sound assets come from the user's Minecraft installation.

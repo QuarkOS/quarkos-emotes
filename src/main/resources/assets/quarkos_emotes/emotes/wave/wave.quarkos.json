@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:wave",
+  "name": "emote.quarkos_emotes.wave",
+  "icon": "minecraft:sunflower",
+  "category": "greeting",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

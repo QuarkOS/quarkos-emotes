@@ -71,11 +71,11 @@ class ImportTests(unittest.TestCase):
         return importer.plan_import(self.source, self.output, allow_new)[0]
 
     def test_names_namespaces_case_and_aliases(self):
-        ids = {"wave", "table_flip", "dance_groove", "dance_elaborate"}
+        ids = {"wave", "tableflip", "dance_groove", "dance_elaborate"}
         for name, expected in [("animation.player.WAVE", "wave"),
-                               ("animation.quarkos.tableflip", "table_flip"),
-                               ("something.any.table-flip", "table_flip"),
-                               ("TABLE_FLIP", "table_flip"), ("tableFlip", "table_flip")]:
+                               ("animation.quarkos.tableflip", "tableflip"),
+                               ("something.any.table-flip", "tableflip"),
+                               ("TABLE_FLIP", "tableflip"), ("tableFlip", "tableflip")]:
             with self.subTest(name=name):
                 self.assertEqual(importer.resolve_id(name, self.source / "unknown.json", self.source, ids)[0], expected)
         self.assertEqual(importer.name_candidates("dance", {"dance_groove"}), {"dance_groove"})
@@ -84,18 +84,18 @@ class ImportTests(unittest.TestCase):
         self.assertIn("ambiguous", reason)
 
     def test_filename_and_nested_folder_fallback_and_name_precedence(self):
-        ids = {"wave", "table_flip"}
+        ids = {"wave", "tableflip"}
         for path in [self.source / "wave.animation.json", self.source / "wave" / "out" / "export.json"]:
             self.assertEqual(importer.resolve_id("animation.bot.unknown", path, self.source, ids)[0], "wave")
         self.assertEqual(importer.resolve_id("animation.player.wave", self.source / "tableflip.json", self.source, ids)[0], "wave")
 
-    def test_prop_aliases_and_metadata_carryover(self):
+    def test_prop_names_and_metadata_carryover(self):
         metadata = deepcopy(self.metadata)
-        metadata["id"] = "quarkos_emotes:table_flip"
+        metadata["id"] = "quarkos_emotes:tableflip"
         metadata["prop"] = {"model": "cubes", "bone": "prop", "attach": "world", "cubes": [
             {"from": [-10, 10, -6], "to": [10, 12, 6], "texture": "minecraft:block/oak_planks"},
         ]}
-        self.builtin("table_flip", metadata)
+        self.builtin("tableflip", metadata)
         for alias in ("table", "prop_table", "item", "prop"):
             with self.subTest(alias=alias):
                 data = export("animation.player.tableflip")
@@ -105,10 +105,10 @@ class ImportTests(unittest.TestCase):
                 self.write(self.source / "nested" / "table.json", data)
                 entry = self.plan()[0]
                 self.assertEqual(entry.status, "replaced")
-                self.assertEqual(entry.document["quarkos"], metadata)
+                self.assertEqual(entry.metadata, metadata)
+                self.assertNotIn("quarkos", entry.document)
                 expected = deepcopy(animation)
-                expected["bones"]["prop"] = expected["bones"].pop(alias)
-                self.assertEqual(entry.document["animations"], {"animation.quarkos_emotes.table_flip": expected})
+                self.assertEqual(entry.document["animations"], {"animation.player.tableflip": expected})
                 self.assertEqual(data, original)
 
     def test_extra_prop_kept_and_warned(self):
@@ -116,8 +116,8 @@ class ImportTests(unittest.TestCase):
         next(iter(data["animations"].values()))["bones"]["item"] = {"rotation": [0, 0, 0]}
         self.write(self.source / "wave.json", data)
         entry = self.plan()[0]
-        self.assertIn("prop", entry.document["animations"]["animation.quarkos_emotes.wave"]["bones"])
-        self.assertIn("no quarkos.prop", entry.warnings[0])
+        self.assertIn("item", entry.document["animations"]["animation.player.wave"]["bones"])
+        self.assertIn("no geometry", entry.warnings[0])
 
     def test_loop_variants_and_unchanged_bedrock_payload(self):
         for loop in (True, False, "hold_on_last_frame"):
@@ -125,9 +125,10 @@ class ImportTests(unittest.TestCase):
                 data = export(loop=loop)
                 self.write(self.source / "wave.json", data)
                 entry = self.plan()[0]
-                self.assertEqual(entry.document["animations"]["animation.quarkos_emotes.wave"],
+                self.assertEqual(entry.document["animations"]["animation.player.wave"],
                                  data["animations"]["animation.player.wave"])
-                self.assertEqual(entry.document["quarkos"], self.metadata)
+                self.assertEqual(entry.metadata, self.metadata)
+                self.assertNotIn("quarkos", entry.document)
 
     def test_new_opt_in_and_ambiguous_dance_skipped_even_with_new(self):
         self.write(self.source / "jump.json", export("animation.player.Jump-Spin"))
@@ -137,29 +138,29 @@ class ImportTests(unittest.TestCase):
         entry = self.plan(True)[0]
         self.assertEqual(entry.emote_id, "jump_spin")
         self.assertEqual(entry.status, "new")
-        self.assertEqual(entry.document["quarkos"]["id"], "quarkos_emotes:jump_spin")
+        self.assertEqual(entry.metadata["id"], "quarkos_emotes:jump_spin")
         self.builtin("dance_groove")
         self.builtin("dance_elaborate")
         self.write(self.source / "dance.json", export("animation.player.dance"))
         self.assertIn("ambiguous", self.plan(True)[0].reason)
         code, _ = self.run_cli("--new", "--apply")
         self.assertEqual(code, 0)
-        self.assertTrue((self.output / "jump_spin.animation.json").exists())
+        self.assertTrue((self.output / "jump_spin/jump_spin.animation.json").exists())
 
     def test_invalid_file_and_animation_skipped_valid_sibling_imported(self):
         (self.source / "broken.json").write_text("{", encoding="utf-8")
         data = export("animation.player.wave")
         data["animations"]["animation.bot.bad"] = {"loop": "yes", "bones": {}}
         self.write(self.source / "batch.json", data)
-        self.write(self.source / "rig.geo.json", {"minecraft:geometry": []})
+        self.write(self.source / "rig" / "rig.geo.json", {"minecraft:geometry": []})
         (self.source / "log.txt").write_text("not JSON", encoding="utf-8")
         code, report = self.run_cli("--new", "--apply")
         self.assertEqual(code, 1)
         self.assertIn("invalid file", report)
         self.assertIn("invalid animation", report)
         self.assertIn("1 JSON files without animations ignored", report)
-        self.assertEqual(json.loads((self.output / "wave.animation.json").read_text())["quarkos"], self.metadata)
-        self.assertFalse((self.output / "bad.animation.json").exists())
+        self.assertEqual(json.loads((self.output / "wave/wave.quarkos.json").read_text()), self.metadata)
+        self.assertFalse((self.output / "bad/bad.animation.json").exists())
 
     def test_dry_run_writes_nothing_default_and_explicit(self):
         self.write(self.source / "wave.json", export())
@@ -184,17 +185,20 @@ class ImportTests(unittest.TestCase):
         backups = list(self.backups.glob("*/*.animation.json"))
         self.assertEqual(len(backups), 1)
         self.assertEqual(backups[0].read_bytes(), before)
+        self.assertFalse(target.exists())
+        target = self.output / "wave/wave.animation.json"
         self.assertNotEqual(target.read_bytes(), before)
+        self.assertEqual(target.read_bytes(), (self.source / "wave/export.json").read_bytes())
         self.assertEqual(validator.validate(target)[2], "true")
 
-    def test_prop_collisions_and_duplicate_targets_skip(self):
+    def test_distinct_prop_names_do_not_collide_and_duplicate_targets_skip(self):
         data = export()
         bones = next(iter(data["animations"].values()))["bones"]
         bones.update({"table": {"position": [0, 0, 0]}, "prop": {"position": [1, 0, 0]}})
         self.write(self.source / "collision.json", data)
         entry = self.plan()[0]
-        self.assertEqual(entry.status, "skipped")
-        self.assertIn("collision", entry.reason)
+        self.assertEqual(entry.status, "replaced")
+        self.assertEqual(set(entry.document["animations"]["animation.player.wave"]["bones"]), {"right_arm", "table", "prop"})
         (self.source / "collision.json").unlink()
         self.write(self.source / "one.json", export())
         self.write(self.source / "two.json", export())
@@ -213,6 +217,47 @@ class ImportTests(unittest.TestCase):
                 data["animations"]["animation.player.wave"]["bones"]["right_arm"]["rotation"]["0"] = frame
                 self.write(self.source / "wave.json", data)
                 self.assertEqual(self.plan()[0].status, "skipped")
+
+    def test_folder_assets_exact_copy_sidecar_and_complete_backup(self):
+        import shutil
+        shipped = validator.BUILTINS / "tableflip"
+        shutil.copytree(shipped, self.source / "tableflip")
+        (self.source / "tableflip/preview.gif").write_bytes(b"preview")
+        (self.source / "tableflip/alex_preview.png").write_bytes(b"proof")
+        (self.source / "tableflip/project.bbmodel").write_bytes(b"authoring")
+        (self.source / "tableflip/tableflip_clipcheck.txt").write_text("proof")
+        code, report = self.run_cli("--new", "--apply")
+        self.assertEqual(code, 0, report)
+        folder = self.output / "tableflip"
+        self.assertEqual(set(p.name for p in folder.iterdir()), {
+            "tableflip.animation.json", "tableflip.quarkos.json", "table_prop.geo.json", "table_prop.png"})
+        for name in ("tableflip.animation.json", "table_prop.geo.json", "table_prop.png"):
+            self.assertEqual((folder / name).read_bytes(), (shipped / name).read_bytes())
+        data = json.loads((folder / "tableflip.animation.json").read_text())
+        self.assertNotIn("quarkos", data)
+        self.assertIn("table", data["animations"]["animation.emote.tableflip"]["bones"])
+        self.assertEqual(validator.validate(folder / "tableflip.animation.json")[0], "quarkos_emotes:tableflip")
+        # A second replacement backs up PNG, geo, animation and metadata together.
+        originals = {p.name: p.read_bytes() for p in folder.iterdir()}
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        for name, payload in originals.items():
+            copies = list(self.backups.glob("*/tableflip/" + name))
+            self.assertEqual(len(copies), 1)
+            self.assertEqual(copies[0].read_bytes(), payload)
+
+    def test_existing_folder_sidecar_kept_when_export_has_none(self):
+        flat = self.output / "wave.animation.json"
+        flat.unlink()
+        self.write(self.output / "wave/wave.animation.json", export())
+        self.write(self.output / "wave/wave.quarkos.json", self.metadata)
+        source = self.write(self.source / "wave/wave.animation.json", export(loop=True))
+        entry = self.plan()[0]
+        self.assertEqual(entry.metadata, self.metadata)
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertEqual((self.output / "wave/wave.animation.json").read_bytes(), source.read_bytes())
+        self.assertEqual(json.loads((self.output / "wave/wave.quarkos.json").read_text()), self.metadata)
 
     def test_empty_wip_directory_is_successful(self):
         self.write(self.source / "rig" / "player.geo.json", {"minecraft:geometry": []})
