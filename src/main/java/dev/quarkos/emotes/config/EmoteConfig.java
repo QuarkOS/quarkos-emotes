@@ -14,7 +14,7 @@ public final class EmoteConfig {
     public FirstPerson firstPerson=FirstPerson.THIRD_PERSON_CAMERA;
     public boolean cancelOnMove=true, playSounds=true, showOthers=true, holdWheel=true;
     public float soundVolume=1;
-    public List<String> favorites=new ArrayList<>();
+    public List<String> favorites=new ArrayList<>(List.of("quarkos_emotes:wave","quarkos_emotes:thinking","quarkos_emotes:clap","quarkos_emotes:tableflip","quarkos_emotes:facepalm","quarkos_emotes:groove","quarkos_emotes:bigdance","quarkos_emotes:cheer"));
     public static EmoteConfig get() { return instance; }
     public static void load(Path game) {
         file=game.resolve("config/quarkos_emotes.json");

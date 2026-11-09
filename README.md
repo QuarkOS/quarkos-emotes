@@ -1,17 +1,21 @@
 # QuarkOS Emotes
 
 Editable player emotes for Minecraft by **Emilio Schwaiger / QuarkOS**,
-with five built-in animations by Blockbench animator **Blockato**.
+with fifteen built-in animations by Blockbench animator **Blockato**.
 
-The set contains **16 emotes**: `wave`, `thinking`, `tableflip`, `facepalm`,
-`clap`, `bow`, `cheer`, `dab`, `dance_elaborate` (Spotlight Dance),
-`dance_groove` (Groove), `laugh`, `point`, `salute`, `shrug`, `sit`, `stretch`.
+The set contains **16 emotes**: `wave`, `thinking`, `clap`, `tableflip`,
+`facepalm`, `groove`, `bigdance`, `cheer`, `bow`, `salute`, `laugh`, `shrug`,
+`point`, `dab`, `sit_full` (Sit Down & Stand Up), and `stretch`.
 
-Blockato's wave, thinking, tableflip, facepalm and clap play once. Tableflip
-includes a textured temporary table bound to the animation's `table` bone.
-Cheer, laugh and the two dances loop; sit holds its final pose until cancelled.
-The five Blockato exports and the table geometry/texture are unchanged from
-the animator's files. See [credits](CREDITS.md).
+Groove and bigdance loop with smooth Catmull–Rom seams. The other fourteen
+play once and blend back to the default pose over 0.2 seconds. `sit_full` is
+the animator's complete four-second sit-down/look-around/stand-up sequence;
+the `sit` ID is free for a future hold animation. Custom animations can use
+`"loop": "hold_on_last_frame"` to hold until movement or cancellation.
+Tableflip includes a textured temporary table bound to its `table` bone.
+All fifteen Blockato exports and the table geometry/texture are byte-identical
+to the animator's files. Stretch is the remaining original emote.
+See [credits](CREDITS.md).
 
 ## Targets and status
 
@@ -43,11 +47,14 @@ attach to the player root for the duration of the emote.
 
 ```sh
 python3 tools/validate_emotes.py
-python3 tools/import_blockato.py path/to/curated-intake --dry-run
+python3 tools/import_blockato.py --dry-run
+python3 tools/import_blockato.py --apply
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -v
 ```
 
-The importer supports preview, backups, folder assets and metadata preservation.
+The importer adds new and changed animator folders from `/home/box/blockato/emotes/`
+in one command, preserving sidecars and backing up replacements. Unchanged
+exports are skipped. Use a source path to import a curated subset.
 English emote names are in the runtime `lang/en_us.json`.
 
 ## Release checks
@@ -65,7 +72,7 @@ may clamp its effective scale to preserve the minimum GUI size. Use distinct sho
 directories for each size/scale run. `-Ponly=wave,ui-wheel,ui-wheel-hover,ui-config`
 limits captures. Full runs now produce 44 shots and 18 render checks.
 
-E5's new screenshots still need the parent's in-game run. Inspect both classic
+The batch 2 screenshots and playback still need the parent's in-game run. Inspect both classic
 and slim skins, table UVs and floor placement, and end/cancel reset.
 Dedicated-server startup and two-client synchronization also need verification.
 

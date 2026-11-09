@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:cheer",
+  "name": "emote.quarkos_emotes.cheer",
+  "icon": "minecraft:firework_star",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

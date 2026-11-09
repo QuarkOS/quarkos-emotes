@@ -109,7 +109,7 @@ def metadata(value, inferred_id, length):
         require(value["id"] == inferred_id, "quarkos.id must match the emote id")
     if "name" in value:
         require(isinstance(value["name"], str) and bool(value["name"].strip()),
-                "quarkos.name: expected a nonempty translation key")
+                "quarkos.name: expected a nonempty display name or translation key")
     if "icon" in value:
         resource(value["icon"], "quarkos.icon")
     if "category" in value:
@@ -286,7 +286,8 @@ def main(argv=None):
             names = read_json(LANG)
             obj(names, str(LANG))
             for row in rows:
-                require(row[5] is None or (row[5] in names and isinstance(names[row[5]], str) and bool(names[row[5]].strip())),
+                require(row[5] is None or not row[5].startswith("emote.") or
+                        (row[5] in names and isinstance(names[row[5]], str) and bool(names[row[5]].strip())),
                         f"missing English name for {row[0]} ({row[5]})")
         except (Invalid, OSError, ValueError) as error:
             errors.append(f"{LANG}: {error}")

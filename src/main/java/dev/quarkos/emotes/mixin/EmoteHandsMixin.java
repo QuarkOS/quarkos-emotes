@@ -21,7 +21,8 @@ public abstract class EmoteHandsMixin {
     @Inject(method="renderHandsWithItems",at=@At("HEAD"),cancellable=true)
     private void emotes$hands(float partial,PoseStack pose,net.minecraft.client.renderer.SubmitNodeCollector collector,LocalPlayer player,int light,CallbackInfo ci) {
         if(!animated(player))return;
-        var renderer=Minecraft.getInstance().getEntityRenderDispatcher().getPlayerRenderer(player);
+        // getRenderer + cast: Stonecutter rewrites the literal "PlayerRenderer" (getPlayerRenderer) to AvatarRenderer on 1.21.11.
+        var renderer=(net.minecraft.client.renderer.entity.player.AvatarRenderer<net.minecraft.client.player.AbstractClientPlayer>)(Object)Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(player);
         var skin=player.getSkin().body().texturePath();
         pose.pushPose();
         pose.translate(0,-.375,-1.15);pose.scale(-1,-1,1);

@@ -20,8 +20,11 @@ public final class PoseMath {
         // floor (even when every authored key is clear). Lift all siblings by
         // the same amount so their relative positions remain intact.
         var leg=animation.get("right_leg");
-        if(leg!=null&&baseline.size()==6&&baseline.keySet().stream().allMatch(name->
-                animation.containsKey(name)&&Math.abs(animation.get(name).position().y()-leg.position().y())<1e-6)) {
+        // Torso/shoulder pivot compensation can add different Y offsets above
+        // the shared root (Blockato's sit). Matching leg offsets still identify
+        // the common drop; carry the correction through every sibling.
+        if(leg!=null&&baseline.size()==6&&baseline.keySet().stream().allMatch(animation::containsKey)
+                &&Math.abs(animation.get("left_leg").position().y()-leg.position().y())<1e-6) {
             double lift=Math.max(0,Math.max(foot(result.get("right_leg")),foot(result.get("left_leg")))
                     -Math.max(foot(baseline.get("right_leg")),foot(baseline.get("left_leg"))));
             if(lift>0)result.replaceAll((name,p)->new Emote.Pose(p.rotation(),

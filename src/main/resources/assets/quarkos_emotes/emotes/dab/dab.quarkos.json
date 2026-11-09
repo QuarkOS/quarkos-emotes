@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:dab",
+  "name": "emote.quarkos_emotes.dab",
+  "icon": "minecraft:blaze_rod",
+  "category": "fun",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

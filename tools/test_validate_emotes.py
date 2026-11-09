@@ -62,6 +62,26 @@ class ValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(validator.Invalid, "dimension mismatch"):
             validator.validate_geometry(geo_path)
 
+    def test_loop_modes_and_sit_full_filename(self):
+        for mode in (True, False, "hold_on_last_frame"):
+            row = validator.validate_data(export("animation.emote.sit", mode), "sit_full.animation.json")
+            self.assertEqual(row[:3], ("quarkos_emotes:sit_full", 2.0, str(mode).lower()))
+        for mode in ("true", "false", "yes", 1, None):
+            with self.assertRaises(validator.Invalid):
+                validator.validate_data(export(loop=mode), "bad.animation.json")
+
+    def test_shipped_catalog_has_exact_sixteen_ids_and_only_two_loops(self):
+        files = [p for p in validator.BUILTINS.rglob("*.json") if validator.animation_file(p)]
+        rows = [validator.validate(p) for p in files]
+        expected = set("wave thinking clap tableflip facepalm groove bigdance bow salute laugh shrug cheer point dab sit_full stretch".split())
+        self.assertEqual({r[0] for r in rows}, {"quarkos_emotes:" + name for name in expected})
+        self.assertEqual(len(rows), 16)
+        self.assertEqual({r[0] for r in rows if r[2] == "true"}, {"quarkos_emotes:groove", "quarkos_emotes:bigdance"})
+        self.assertFalse((validator.BUILTINS / "sit").exists())
+        names = validator.read_json(validator.LANG)
+        for row in rows:
+            self.assertIn(row[5], names)
+
     def test_bad_sidecar_sound_time_and_type_rejected(self):
         side_path = self.folder / "tableflip.quarkos.json"
         original = validator.read_json(side_path)

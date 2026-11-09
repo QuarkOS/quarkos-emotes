@@ -212,3 +212,17 @@ Folder discovery, sidecars, geometry/PNG props, wheel/harness IDs, credits and
 store drafts are updated. The importer preserves bone names/export bytes and
 backs up/copies runtime folders and sidecars; proof/authoring files are excluded.
 See the root `STATUS-codex.md` E4 entry for verification and remaining checks.
+
+## E6 — current content supersedes earlier draft catalog (2026-11-10)
+
+Current release drafts now describe fifteen byte-identical animator exports by
+Blockbench animator Blockato (batches 1+2) plus the original stretch. Batch 2
+replaces the remaining flat drafts except stretch. Groove and bigdance loop;
+all other built-ins play once. The delivered four-second sit-down/stand-up
+sequence is sit_full, while sit remains free for a later hold delivery.
+
+Updated README, format guide, credits, changelog, store descriptions and animator
+metadata. Documented one-command import, loop seam interpolation and .2-second
+exit blending. The root STATUS-codex.md contains E6 implementation/validation
+results and parent-run build, screenshot and multiplayer follow-ups. No store
+publication or external messages were sent.

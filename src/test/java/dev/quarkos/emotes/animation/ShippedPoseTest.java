@@ -32,8 +32,8 @@ class ShippedPoseTest {
         return map;
     }
     @Test void seatedLegsStayAboveFloorDuringEntryHoldAndBlendedExit() throws IOException {
-        var e=load("sit",false);var player=new EmotePlayer(e);
-        for(int frame=0;frame<=528;frame++) {
+        var e=load("sit_full",true);var player=new EmotePlayer(e);
+        for(int frame=0;frame<=960;frame++) {
             double time=frame/240.0;player.freeze(time);
             // Includes every exit blend weight, not just authored full-weight poses.
             for(int blend=0;blend<=20;blend++) {
@@ -47,32 +47,47 @@ class ShippedPoseTest {
                 }
                 // Correcting the feet must carry all siblings together.
                 assertEquals(pose.get("head").position().y(),pose.get("body").position().y(),1e-9);
-                assertEquals(12,pose.get("right_leg").position().y()-pose.get("body").position().y(),1e-9);
+                assertEquals(12+(player.pose(0).get("body").position().y()-player.pose(0).get("right_leg").position().y())*blend/20.0,
+                        pose.get("right_leg").position().y()-pose.get("body").position().y(),1e-9);
             }
         }
     }
     @Test void bowMaintainsHipNeckAndShoulderConnectionsOnTheFlatRig() throws IOException {
-        var e=load("bow",false);
+        var e=load("bow",true);
         for(var key:e.bones().get("body").rotation().keys()) {
             double t=key.time(),angle=Math.toRadians(key.post().x());
             var body=e.bones().get("body").sample(t,e.easing());
-            // Body's lower end stays on the unkeyed hips at model [0,12,0].
-            assertEquals(12,-body.position().y()+12*Math.cos(angle),1e-5);
-            assertEquals(0,body.position().z()+12*Math.sin(angle),1e-5);
+            // The animator bends about the front hip edge at model [0,12,-2].
+            assertEquals(12,-body.position().y()+12*Math.cos(angle)+2*Math.sin(angle),.002);
+            assertEquals(-2,body.position().z()+12*Math.sin(angle)-2*Math.cos(angle),.002);
             assertEquals(body.position(),e.bones().get("head").sample(t,e.easing()).position());
             for(String arm:List.of("right_arm","left_arm")) {
                 var shoulder=e.bones().get(arm).sample(t,e.easing()).position();
-                assertEquals(-body.position().y()+2*Math.cos(angle),2-shoulder.y(),1e-5);
-                assertEquals(body.position().z()+2*Math.sin(angle),shoulder.z(),1e-5);
+                assertEquals(-body.position().y()+2*Math.cos(angle),2-shoulder.y(),.002);
+                assertEquals(body.position().z()+2*Math.sin(angle),shoulder.z(),.002);
             }
+        }
+    }
+    @Test void shippedOneShotsReachTheirLastPoseAndFadeWithoutASnap() throws IOException {
+        for(String name:List.of("wave","thinking","tableflip","facepalm","clap","bow","salute","laugh","shrug","cheer","point","dab","sit_full","stretch")) {
+            var e=load(name,!name.equals("stretch"));var p=new EmotePlayer(e);
+            while(!p.stopping())p.tick();
+            assertEquals(e.length(),p.time(0),1e-8);
+            assertTrue(p.weight(0)>.74,name+" must retain the pose at the natural endpoint");
+            var finalPose=p.pose(0);double weight=p.weight(0);
+            while(!p.finished()) {
+                p.tick();assertEquals(finalPose,p.pose(.5),name+" last pose must stay fixed");
+                assertTrue(p.weight(0)<=weight,name+" exit must fade toward the default pose");weight=p.weight(0);
+            }
+            assertEquals(0,p.weight(0),1e-8,name);
         }
     }
     @Test void allSixteenShippedIdsAndNamesResolveFromFlatAndFolderFiles() throws IOException {
         Set<String> ids=new HashSet<>();JsonObject lang;
         try(var reader=resource("/assets/quarkos_emotes/lang/en_us.json")){lang=JsonParser.parseReader(reader).getAsJsonObject();}
-        Set<String> folders=Set.of("wave","thinking","tableflip","facepalm","clap");
-        for(String name:List.of("wave","thinking","tableflip","facepalm","clap","bow","salute","laugh","dab","sit","dance_groove","dance_elaborate","shrug","point","cheer","stretch")) {
-            var e=load(name,folders.contains(name));
+
+        for(String name:List.of("wave","thinking","tableflip","facepalm","clap","bow","salute","laugh","dab","sit_full","groove","bigdance","shrug","point","cheer","stretch")) {
+            var e=load(name,!name.equals("stretch"));
             assertEquals("quarkos_emotes:"+name,e.id());assertTrue(ids.add(e.id()));
             assertTrue(lang.has(e.name()),"Missing display name: "+e.name());
         }

@@ -32,14 +32,11 @@
   "emote.quarkos_emotes.cheer": "Cheer",
   "emote.quarkos_emotes.clap": "Clap",
   "emote.quarkos_emotes.dab": "Dab",
-  "emote.quarkos_emotes.dance_elaborate": "Spotlight Dance",
-  "emote.quarkos_emotes.dance_groove": "Groove",
   "emote.quarkos_emotes.facepalm": "Facepalm",
   "emote.quarkos_emotes.laugh": "Laugh",
   "emote.quarkos_emotes.point": "Point",
   "emote.quarkos_emotes.salute": "Salute",
   "emote.quarkos_emotes.shrug": "Shrug",
-  "emote.quarkos_emotes.sit": "Sit",
   "emote.quarkos_emotes.stretch": "Stretch",
   "emote.quarkos_emotes.thinking": "Thinking",
   "emote.quarkos_emotes.tableflip": "Table Flip",
@@ -55,5 +52,8 @@
   "tooltip.quarkos_emotes.favorites": "Switch between all emotes and your eight saved favorites. F or right-click adds or removes the hovered emote.",
   "tooltip.quarkos_emotes.previous_page": "Previous page (Left arrow / Page Up / scroll).",
   "tooltip.quarkos_emotes.next_page": "Next page (Right arrow / Page Down / scroll).",
-  "text.quarkos_emotes.choose": "Choose an emote"
+  "text.quarkos_emotes.choose": "Choose an emote",
+  "emote.quarkos_emotes.groove": "Groove",
+  "emote.quarkos_emotes.bigdance": "Big Dance",
+  "emote.quarkos_emotes.sit_full": "Sit Down & Stand Up"
 }

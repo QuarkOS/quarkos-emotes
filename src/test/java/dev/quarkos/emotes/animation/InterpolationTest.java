@@ -19,6 +19,21 @@ class InterpolationTest {
         assertEquals(0,cat.sample(0,"linear",Vec3.ZERO).x());assertEquals(6,cat.sample(3,"linear",Vec3.ZERO).x());
         assertEquals(2,cat.sample(1,"linear",Vec3.ZERO).x());
     }
+    @Test void loopingCatmullRomWrapsBothNeighboursAndHasContinuousVelocity() {
+        var cat=Track.Mode.CATMULLROM;
+        var track=new Track(List.of(key(0,0,0,cat),key(1,3,3,cat),key(2,-2,-2,cat),key(3,0,0,cat)));
+        double h=1e-6;
+        double before=(track.sample(3,"linear",Vec3.ZERO,true).x()-track.sample(3-h,"linear",Vec3.ZERO,true).x())/h;
+        double after=(track.sample(h,"linear",Vec3.ZERO,true).x()-track.sample(0,"linear",Vec3.ZERO,true).x())/h;
+        assertEquals(2.5,before,2e-5);assertEquals(before,after,2e-5);
+        // Once/hold retain their original clamped neighbours.
+        assertEquals(1.5,track.sample(h,"linear",Vec3.ZERO).x()/h,2e-5);
+        assertEquals(1,(track.sample(3,"linear",Vec3.ZERO).x()-track.sample(3-h,"linear",Vec3.ZERO).x())/h,2e-5);
+        for(int count=0;count<=2;count++) {
+            var small=new Track(track.keys().subList(0,count));
+            assertNotNull(small.sample(.5,"linear",Vec3.ZERO,true));
+        }
+    }
     @Test void easingEndpointsAndShape() {
         for(String name:List.of("linear","ease_in","ease_out","ease_in_out","ease_in_cubic","ease_out_cubic","ease_in_out_cubic","ease_in_sine","ease_out_sine","ease_in_out_sine","ease_in_back","ease_out_back","ease_in_out_back")) {
             assertEquals(0,Easing.apply(name,0),1e-9,name);assertEquals(1,Easing.apply(name,1),1e-9,name);

@@ -16,7 +16,10 @@ public record Emote(String id, String name, String icon, String category, double
     public record Sound(double time, String id, float volume, float pitch) {}
     public record Bone(Track rotation, Track position, Track scale) {
         public Pose sample(double time, String easing) {
-            return new Pose(rotation.sample(time,easing,Vec3.ZERO),position.sample(time,easing,Vec3.ZERO),scale.sample(time,easing,Vec3.ONE));
+            return sample(time,easing,false);
+        }
+        public Pose sample(double time, String easing, boolean loop) {
+            return new Pose(rotation.sample(time,easing,Vec3.ZERO,loop),position.sample(time,easing,Vec3.ZERO,loop),scale.sample(time,easing,Vec3.ONE,loop));
         }
     }
     public record Pose(Vec3 rotation, Vec3 position, Vec3 scale) {

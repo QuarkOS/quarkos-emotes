@@ -43,6 +43,41 @@ class AnimatorContractTest {
             }
         }
     }
+    @Test void batchTwoDurationsLoopsIdsGridAndOriginalAnimationNames() throws IOException {
+        var lengths=Map.of("groove",2.0,"bigdance",4.0,"bow",2.4,"salute",2.0,"laugh",2.4,
+                "shrug",1.6,"cheer",2.4,"point",2.0,"dab",1.6,"sit_full",4.0);
+        for(var entry:lengths.entrySet()) {
+            String name=entry.getKey();var e=shipped(name);
+            assertEquals("quarkos_emotes:"+name,e.id());assertEquals(entry.getValue(),e.length());
+            assertEquals(Set.of("groove","bigdance").contains(name)?Emote.Loop.LOOP:Emote.Loop.ONCE,e.loop());
+            assertTrue(e.cancelOnMove());
+            try(var reader=resource(name+"/"+name+".animation.json")) {
+                var root=JsonParser.parseReader(reader).getAsJsonObject();assertFalse(root.has("quarkos"));
+                assertEquals(Set.of("animation.emote."+(name.equals("sit_full")?"sit":name)),root.getAsJsonObject("animations").keySet());
+            }
+            for(var bone:e.bones().values())for(var track:List.of(bone.rotation(),bone.position(),bone.scale()))for(var key:track.keys())
+                assertEquals(Math.rint(key.time()*20),key.time()*20,1e-8,"20 fps grid");
+        }
+    }
+    @Test void shippedDancesHaveNoPoseJumpAndContinuousVelocityAtWrap() throws IOException {
+        for(String name:List.of("groove","bigdance")) {
+            var e=shipped(name);var p=new EmotePlayer(e);double h=1e-7;
+            p.freeze(e.length()-h);var before=p.pose(0);
+            p.freeze(e.length());var seam=p.pose(0);
+            p.freeze(e.length()+h);var after=p.pose(0);
+            assertEquals(0,p.time(0)-h,1e-12);
+            for(String bone:seam.keySet())for(int channel=0;channel<3;channel++) {
+                var a=component(before.get(bone),channel);var b=component(seam.get(bone),channel);var c=component(after.get(bone),channel);
+                for(int axis=0;axis<3;axis++) {
+                    double av=axis(a,axis),bv=axis(b,axis),cv=axis(c,axis);
+                    assertEquals(av,cv,.001,name+" pose jump: "+bone);
+                    assertEquals((bv-av)/h,(cv-bv)/h,.01,name+" seam velocity: "+bone);
+                }
+            }
+        }
+    }
+    private Vec3 component(Emote.Pose p,int i) { return switch(i) { case 0 -> p.rotation();case 1 -> p.position();default -> p.scale(); }; }
+    private double axis(Vec3 v,int i) { return switch(i) { case 0 -> v.x();case 1 -> v.y();default -> v.z(); }; }
     @Test void geometryCubesUvPivotsAndRotation() {
         var geometries=PropGeometry.parse(new StringReader("""
             {"format_version":"1.12.0","minecraft:geometry":[{"description":{"texture_width":64,"texture_height":32},"bones":[

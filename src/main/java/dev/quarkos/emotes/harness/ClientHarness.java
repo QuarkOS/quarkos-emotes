@@ -33,14 +33,14 @@ public final class ClientHarness {
             case "facepalm" -> .65;
             case "clap" -> .6;
             case "tableflip" -> .75;
-            case "bow" -> 1.1;
+            case "bow" -> 1.0;
             case "salute" -> .8;
             case "laugh" -> .65;
-            case "dab" -> .82;
-            case "sit" -> 1.4;
-            case "dance_groove" -> .5;
-            case "dance_elaborate" -> 3.25;
-            case "shrug" -> .84;
+            case "dab" -> .8;
+            case "sit_full" -> 2.0;
+            case "groove" -> .625;
+            case "bigdance" -> 1.5;
+            case "shrug" -> .7;
             case "point" -> 1.0;
             case "cheer" -> .75;
             case "stretch" -> 1.15;
@@ -119,7 +119,7 @@ public final class ClientHarness {
             boolean all=only.contains("")||only.contains(name)||only.contains(e.id())||only.contains("emote-"+name);
             if(all) list.add(new Shot("emote-"+name,e.id(),CameraType.THIRD_PERSON_FRONT,""));
             if(all||only.contains("emote-"+name+"-34")) list.add(new Shot("emote-"+name+"-34",e.id(),CameraType.THIRD_PERSON_FRONT,"34"));
-            if(name.equals("tableflip")||name.startsWith("dance_")) {
+            if(name.equals("tableflip")||name.equals("groove")||name.equals("bigdance")) {
                 if(all||only.contains("emote-"+name+"-back")) list.add(new Shot("emote-"+name+"-back",e.id(),CameraType.THIRD_PERSON_BACK,""));
                 if(all||only.contains("emote-"+name+"-side")) list.add(new Shot("emote-"+name+"-side",e.id(),CameraType.THIRD_PERSON_FRONT,"side"));
             }
@@ -154,7 +154,7 @@ public final class ClientHarness {
                 portraitDistance=portraitOrbit==0?3.1f:2.85f;portraitDrop=.8f;
                 if(portraitOrbit!=0)portraitForward=.55f;
             }
-            if(shot.id().endsWith(":sit")) { portraitDistance=2.25f;portraitDrop=1.05f; }
+            if(shot.id().endsWith(":sit_full")) { portraitDistance=2.25f;portraitDrop=1.05f; }
             EmoteConfig.get().firstPerson=shot.ui().equals("fp-wave-camera")?EmoteConfig.FirstPerson.THIRD_PERSON_CAMERA:EmoteConfig.FirstPerson.SHOW_ARMS;
             mc.options.setCameraType(shot.camera());
             if(shot.ui().equals("fp-wave-camera")) {

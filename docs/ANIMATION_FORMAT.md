@@ -1,12 +1,16 @@
 # QuarkOS Emotes animation format
 
 The runtime reads numeric Blockbench Bedrock animations (`format_version`
-`1.8.0`), without executable Molang. The five built-in animations by **Blockato**
-are byte-identical animator exports: `wave` (2 s), `thinking` (3 s), `tableflip`
-(2.4 s), `facepalm` (2.4 s), and `clap` (2.4 s). All five are one-shot
-(`"loop": false`), with animation names `animation.emote.<name>`. Their keys
-are on a 20 fps grid and predominantly use Catmull–Rom interpolation. Keep the
-exported files unchanged; put mod presentation settings in sidecars.
+`1.8.0`), without executable Molang. The fifteen built-in animations by
+**Blockato** are byte-identical animator exports from batches 1 and 2, following
+`NOTES_v2.md` (older NOTES/NOTES_v1 are superseded). Groove (2 s) and bigdance
+(4 s) loop; wave, thinking, tableflip, facepalm, clap, bow, salute, laugh, shrug,
+cheer, point, dab and sit_full play once. Stretch is the remaining original.
+The delivered four-second `sit` export is renamed `sit_full.animation.json`
+without changing its contents or `animation.emote.sit` key. The `sit` ID is
+free for a later hold animation; no placeholder is shipped. Keys are on the
+20 fps grid, predominantly Catmull–Rom; cheer's positions are linear to avoid
+floor dips. Keep exported files unchanged and presentation settings in sidecars.
 
 ## Files, IDs and overrides
 
@@ -103,11 +107,21 @@ omitted scale supplies one. Omitted bones retain the vanilla pose.
 The outgoing key's `lerp_mode` controls the next segment: `linear` interpolates
 values, `step` holds the outgoing value, and `catmullrom` uses neighboring
 keys and can overshoot. Optional metadata `easing` remaps only linear
-segments; keep `linear` for faithful exported curves. Do not wrap rotation
+segments; keep `linear` for faithful exported curves. For `loop: true`,
+Catmull–Rom wraps neighbours as Blockbench 5.2.2 does: before the first key
+use the second-to-last key, and after the last key use the second key. Author
+equal first/last seam keys; uniform seam intervals give continuous velocity.
+Non-looping clips retain clamped neighbours. Do not wrap rotation
 angles to the shortest path: authored full turns must remain full turns.
 
 `loop: false` plays once, `true` repeats, and `"hold_on_last_frame"` holds
-until cancelled. Entry and exit blend for 0.15 seconds. Props exist only
+the final frame indefinitely after playing once, until movement/cancellation
+(subject to movement settings). Entry blends for 0.15 seconds; cancellation
+and natural one-shot completion blend the final/current pose back to the
+default pose over 0.2 seconds. A cancelled pose freezes throughout that fade.
+Holding is derived locally from play time: only play and stop packets are
+needed. Movement, jump, attack, hurt, death and explicit cancel use the same
+stop path, broadcasting stop so remote viewers also blend out. Props exist only
 while playback is active and hide as soon as completion or cancellation starts;
 the player pose alone blends out. Prop transforms follow the full authored
 trajectory, so blending an inverted table back to rest cannot pull it through
@@ -175,18 +189,28 @@ Global sound settings may mute/scale these cues. No custom audio is bundled.
 ## Import and validate
 
 ```sh
-python3 tools/import_blockato.py path/to/curated-intake --dry-run
+python3 tools/import_blockato.py --dry-run
+python3 tools/import_blockato.py --apply
+# Optional: limit an import to a curated intake
 python3 tools/import_blockato.py path/to/curated-intake --apply
-python3 tools/import_blockato.py path/to/curated-intake --new --apply
 python3 tools/validate_emotes.py
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -v
 ```
 
 The importer matches animation name, filename, then enclosing folders against
 the catalog (ignoring case/separators); ambiguous names and duplicate targets
-are skipped. `tableflip` is the built-in ID. Unmatched names require `--new`.
-Use a curated intake containing only the desired replacements: the animator's
-work directory may contain additional animations outside this built-in set.
+are skipped. `--apply` adds new names and updates changed folders from
+`/home/box/blockato/emotes/` by default; `--new` remains a compatibility flag.
+Unchanged runtime files are reported and skipped without writes or backups.
+New sidecars use a readable literal name, paper icon, fun category and movement
+cancellation; review their presentation before release. Existing sidecars are
+kept (including formatting), unless the source delivers replacement metadata.
+The one-shot `sit` delivery maps to `sit_full`; a later `hold_on_last_frame`
+`sit` maps to `sit`, keeping both IDs distinct. A curated source path limits
+intake when more animator batches are present than should ship in a release.
+If the animator keeps the old one-shot `sit/sit.animation.json` beside an
+equivalent `sit_full/sit_full.animation.json`, the canonical sit_full folder
+wins. Other conflicting duplicate targets remain errors.
 
 It preserves animation and bone names, numeric channels, loop modes and sounds.
 Single-animation files copy byte-for-byte; multi-animation documents split
@@ -196,7 +220,8 @@ otherwise existing destination metadata is kept in a sidecar, or defaults
 are generated. Metadata is never injected into an animator export. Replaced
 animation, sidecar, geometry and PNG files are backed up under
 `tools/replaced/<UTC timestamp>/` with relative paths preserved. Flat
-replacements migrate to the folder layout. Preview writes nothing.
+replacements migrate to the folder layout. Removed prop pairs are backed up
+and removed from the destination. Preview writes nothing.
 
 The validator checks numeric animation content, unique IDs, companion geometry,
 box UVs, matching PNG dimensions, sidecars, and built-in English translations.

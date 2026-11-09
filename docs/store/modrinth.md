@@ -10,15 +10,20 @@ publication. This draft does not announce a published download.
 
 ## Sixteen built-in emotes
 
-`wave`, `thinking`, `tableflip`, `facepalm`, `clap`, `bow`, `cheer`, `dab`,
-`dance_elaborate` (Spotlight Dance), `dance_groove` (Groove), `laugh`, `point`,
-`salute`, `shrug`, `sit`, `stretch`.
+`wave`, `thinking`, `clap`, `tableflip`, `facepalm`, `groove`, `bigdance`,
+`cheer`, `bow`, `salute`, `laugh`, `shrug`, `point`, `dab`, `sit_full`
+(Sit Down & Stand Up), and `stretch`.
 
-**Blockato**, the Blockbench animator, authored wave, thinking, tableflip,
-facepalm and clap for QuarkOS. These five are one-shot exports, shipped
-unchanged with metadata sidecars. Tableflip includes Blockato's geometry
-and PNG texture, animated by its internal `table` bone. The prop follows
-the player's root and disappears as soon as playback stops or is cancelled. Cheer, laugh and both dances loop; sit holds until cancelled.
+**Blockato**, the Blockbench animator, authored fifteen emotes across batches
+1 and 2 for QuarkOS. All fifteen exports ship byte-identical with metadata
+sidecars; stretch is the remaining original. Groove and bigdance loop with
+smooth seams; all others play once and blend back to the default pose.
+Sit_full is the complete four-second sit-down/look-around/stand-up clip;
+`sit` is reserved for a future hold animation. Custom `hold_on_last_frame`
+animations hold until movement or cancellation and then blend out.
+Tableflip includes Blockato's geometry and PNG texture, animated by its
+internal `table` bone. The prop follows the player's root and disappears
+as soon as playback stops or is cancelled.
 
 The wheel offers paging, search and favorites, with settings for sound,
 movement cancellation and first-person behavior. The flat player rig preserves
@@ -31,7 +36,8 @@ Use numeric Bedrock/Blockbench `.animation.json` files in resource packs or
 Folder props use `.geo.json` plus matching `.png` files; metadata may live
 in `<name>.quarkos.json`, preserving the exported animation. The repository
 includes a format guide, an offline validator and an importer with preview
-and replacement backups.
+and replacement backups. Import new/changed animator folders with
+`python3 tools/import_blockato.py --apply`; sidecars are preserved.
 
 ## Compatibility and shared playback
 
@@ -43,10 +49,10 @@ Final dependency and multiplayer instructions follow release verification.
 
 ## Screenshots pending
 
-Capture the gesture set, front/back/side tableflip, dances, sit, wheel and
+Capture the gesture set, front/back/side tableflip, dances, sit_full, wheel and
 settings after the animator integration. Test Steve and Alex, prop textures
 and floor placement, cancellation and first-person view before selecting images.
 
-**Project:** Emilio Schwaiger / QuarkOS · **Animator:** Blockato (five emotes)
+**Project:** Emilio Schwaiger / QuarkOS · **Animator:** Blockato (fifteen emotes)
 · **License:** MIT · **Version:** 1.0.0 (release preparation).
 Vanilla item/sound assets come from the user's Minecraft installation.

@@ -130,7 +130,7 @@ class ImportTests(unittest.TestCase):
                 self.assertEqual(entry.metadata, self.metadata)
                 self.assertNotIn("quarkos", entry.document)
 
-    def test_new_opt_in_and_ambiguous_dance_skipped_even_with_new(self):
+    def test_new_by_default_and_ambiguous_dance_skipped_even_with_new(self):
         self.write(self.source / "jump.json", export("animation.player.Jump-Spin"))
         entry = self.plan()[0]
         self.assertEqual(entry.status, "skipped")
@@ -239,6 +239,8 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(validator.validate(folder / "tableflip.animation.json")[0], "quarkos_emotes:tableflip")
         # A second replacement backs up PNG, geo, animation and metadata together.
         originals = {p.name: p.read_bytes() for p in folder.iterdir()}
+        changed = self.source / "tableflip/tableflip.animation.json"
+        changed.write_bytes(changed.read_bytes() + b"\n")
         code, report = self.run_cli("--apply")
         self.assertEqual(code, 0, report)
         for name, payload in originals.items():
@@ -258,6 +260,83 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(code, 0, report)
         self.assertEqual((self.output / "wave/wave.animation.json").read_bytes(), source.read_bytes())
         self.assertEqual(json.loads((self.output / "wave/wave.quarkos.json").read_text()), self.metadata)
+
+    def test_apply_alone_adds_new_folder_preserves_sidecar_and_skips_unchanged(self):
+        source = self.write(self.source / "new_move/new_move.animation.json",
+                            export("animation.emote.new_move"))
+        # Deliberate formatting must survive the copy.
+        source.write_bytes(source.read_bytes() + b"\n\n")
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        folder = self.output / "new_move"
+        self.assertEqual((folder / "new_move.animation.json").read_bytes(), source.read_bytes())
+        side = folder / "new_move.quarkos.json"
+        metadata = json.loads(side.read_text())
+        self.assertEqual(metadata["name"], "New Move")
+        self.assertTrue(metadata["cancel_on_move"])
+        side.write_text(json.dumps(metadata | {"icon": "minecraft:diamond", "name": "My Move"}, indent=4))
+        exact_side = side.read_bytes()
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertIn("unchanged", report)
+        self.assertEqual(side.read_bytes(), exact_side)
+        self.assertFalse(self.backups.exists())
+        source.write_bytes(source.read_bytes() + b"\n")
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(side.read_bytes(), exact_side)
+        self.assertEqual((folder / "new_move.animation.json").read_bytes(), source.read_bytes())
+
+    def test_sit_once_is_sit_full_and_later_hold_keeps_sit_id(self):
+        source = self.write(self.source / "sit/sit.animation.json", export("animation.emote.sit", False))
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        full = self.output / "sit_full/sit_full.animation.json"
+        self.assertEqual(full.read_bytes(), source.read_bytes())
+        self.assertFalse((self.output / "sit").exists())
+        self.assertEqual(validator.validate(full)[0], "quarkos_emotes:sit_full")
+        source = self.write(source, export("animation.emote.sit", "hold_on_last_frame"))
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        hold = self.output / "sit/sit.animation.json"
+        self.assertEqual(hold.read_bytes(), source.read_bytes())
+        self.assertEqual(validator.validate(hold)[:3], ("quarkos_emotes:sit", 2.0, "hold_on_last_frame"))
+        self.assertTrue(full.exists())
+
+    def test_renamed_sit_delivery_wins_over_equivalent_old_copy(self):
+        self.write(self.source / "sit/sit.animation.json", export("animation.emote.sit", False))
+        canonical = self.write(self.source / "sit_full/sit_full.animation.json",
+                               export("animation.emote.sit_full", False))
+        self.write(self.source / "sit/sit_v2.animation.json", export("animation.emote.sit", "hold_on_last_frame"))
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertIn("legacy sit copy superseded", report)
+        self.assertEqual((self.output / "sit_full/sit_full.animation.json").read_bytes(), canonical.read_bytes())
+        self.assertTrue((self.output / "sit/sit.animation.json").exists())
+        # A changed duplicate must still fail rather than silently choose one.
+        data = export("animation.emote.sit", False)
+        data["animations"]["animation.emote.sit"]["animation_length"] = 3
+        self.write(self.source / "sit/sit.animation.json", data)
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 1, report)
+        self.assertIn("multiple source animations", report)
+
+    def test_removed_prop_pair_is_backed_up_and_removed(self):
+        import shutil
+        shutil.copytree(validator.BUILTINS / "tableflip", self.source / "tableflip")
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        folder = self.output / "tableflip"
+        old_geo = (folder / "table_prop.geo.json").read_bytes()
+        # A revised animation no longer has a prop.
+        self.write(self.source / "tableflip/tableflip.animation.json", export("animation.emote.tableflip"))
+        (self.source / "tableflip/table_prop.geo.json").unlink()
+        (self.source / "tableflip/table_prop.png").unlink()
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertFalse((folder / "table_prop.geo.json").exists())
+        self.assertFalse((folder / "table_prop.png").exists())
+        self.assertEqual(next(self.backups.glob("*/tableflip/table_prop.geo.json")).read_bytes(), old_geo)
 
     def test_empty_wip_directory_is_successful(self):
         self.write(self.source / "rig" / "player.geo.json", {"minecraft:geometry": []})

@@ -11,7 +11,7 @@ public record PropGeometry(String texture,int textureWidth,int textureHeight,Lis
         public Bone { cubes=List.copyOf(cubes); }
         public Emote.Pose sample(EmotePlayer player,double partial) {
             var track=player.emote().bones().get(name);
-            return track==null?new Emote.Pose(Vec3.ZERO,Vec3.ZERO,Vec3.ONE):track.sample(player.time(partial),player.emote().easing());
+            return track==null?new Emote.Pose(Vec3.ZERO,Vec3.ZERO,Vec3.ONE):track.sample(player.time(partial),player.emote().easing(),player.emote().loop()==Emote.Loop.LOOP);
         }
     }
     public PropGeometry { bones=List.copyOf(bones); }

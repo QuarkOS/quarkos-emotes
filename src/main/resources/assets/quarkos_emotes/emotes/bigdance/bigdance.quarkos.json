@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:bigdance",
+  "name": "emote.quarkos_emotes.bigdance",
+  "icon": "minecraft:firework_rocket",
+  "category": "dance",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

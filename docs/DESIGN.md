@@ -25,15 +25,15 @@ custom. F3+T reloads both resource packs and local drop-ins.
 
 The fixed authored player-bone convention is **X = -90 degrees points an arm
 straight forward**. In Java's down-Y ModelPart coordinates this is xRot=-pi/2;
-negating it a second time points the arm backwards. Y/Z rotation signs flip;
-positions map (-X,-Y,+Z) in model pixels. No 1/16 conversion is applied to a
+negating it a second time points the arm backwards. Authored XYZ Euler angles
+map directly into Java radians; positions map (X,-Y,Z) in model pixels. No 1/16 conversion is applied to a
 ModelPart translation; PoseStack prop translations divide pixels by 16.
 The axis tests check the resulting arm direction at both -90 and +90 degrees.
 This explicit convention takes precedence over generic Bedrock coordinate
 recipes that assume a different bind-space orientation.
 
 PlayerModel setupAnim TAIL applies authored transforms after vanilla animation,
-with a 0.15 second blend envelope. On 1.21.1 the rig resets before vanilla setup
+with a 0.15-second entry blend and 0.2-second exit blend. On 1.21.1 the rig resets before vanilla setup
 and copies transforms to the separate outer layers afterward. On 1.21.11 the
 outer layers are child parts and inherit transforms. First-person hand hooks
 apply the same arm samples after vanilla's hand reset. The default first-person
@@ -76,7 +76,7 @@ The remaining per-emote times live in ClientHarness.poseTime. Captures include
 front/¾ views of all sixteen emotes and back/side views of tableflip and dances.
 A harness-only Camera mixin moves the camera closer, lowers its target, and
 orbits it without twisting the player's head. Table views include a forward
-framing offset; sit has a lower target so its feet stay visible.
+framing offset; sit_full has a lower target so its feet stay visible.
 
 First-person SHOW_ARMS uses a stable player-space transform for both arms instead
 of vanilla's rotated item-holding transform, temporarily replacing held items.

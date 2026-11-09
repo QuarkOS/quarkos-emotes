@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:sit_full",
+  "name": "emote.quarkos_emotes.sit_full",
+  "icon": "minecraft:oak_stairs",
+  "category": "pose",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

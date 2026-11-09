@@ -140,7 +140,7 @@ def load_catalog(output):
     return catalog
 
 
-def plan_import(source, output, allow_new=False, backup_root=BACKUPS):
+def plan_import(source, output, allow_new=True, backup_root=BACKUPS):
     catalog = load_catalog(output)
     entries = []
     ignored = 0
@@ -163,6 +163,26 @@ def plan_import(source, output, allow_new=False, backup_root=BACKUPS):
             describe(entry, animation)
             entries.append(entry)
             emote_id, reason = resolve_id(animation_name, path, source, catalog)
+            # Batch 2's complete sit-down/stand-up clip must leave `sit` free
+            # for the later hold export. Determine this from the loop mode so
+            # a future hold-mode sit imports under its own filename as usual.
+            if (slug(leaf(path.name)) == "sit" and isinstance(animation, dict)
+                    and animation.get("loop") is False):
+                emote_id, reason = "sit_full", ""
+                canonical = source / "sit_full" / "sit_full.animation.json"
+                if canonical.is_file():
+                    try:
+                        newer = validator.read_json(canonical)
+                        # The animator may retain batch 2's old sit delivery
+                        # beside its renamed copy. Prefer the canonical folder
+                        # only when the animation itself is exactly the same.
+                        if (len(newer.get("animations", {})) == 1 and
+                                next(iter(newer["animations"].values())) == animation):
+                            entry.emote_id = emote_id
+                            entry.reason = "legacy sit copy superseded by sit_full/sit_full.animation.json"
+                            continue
+                    except (OSError, ValueError, TypeError):
+                        pass  # Invalid/different duplicates receive normal diagnostics.
             if emote_id is None:
                 if not allow_new or reason.startswith("ambiguous"):
                     entry.reason = reason + ("; use --new to add it" if reason.startswith("unmatched") else "")
@@ -180,7 +200,7 @@ def plan_import(source, output, allow_new=False, backup_root=BACKUPS):
                 existing = catalog.get(emote_id)
                 metadata = delivered if delivered is not None else existing[1] if existing and existing[1] is not None else {
                     "id": f"quarkos_emotes:{emote_id}",
-                    "name": f"emote.quarkos_emotes.{emote_id}",
+                    "name": emote_id.replace("_", " ").title(),
                     "icon": "minecraft:paper", "category": "fun", "cancel_on_move": True,
                 }
                 prop_bones = set()
@@ -202,6 +222,13 @@ def plan_import(source, output, allow_new=False, backup_root=BACKUPS):
                 entry.warnings = warnings
                 entry.status = "replaced" if emote_id in catalog else "new"
                 entry.reason = f"animation {animation_name!r}"
+                if existing and existing[0] == output / emote_id / (emote_id + ".animation.json"):
+                    staged = runtime_payloads(entry, output)
+                    current = {p.name for p in assets(existing[0].parent)}
+                    incoming = {p.name for p in assets(path.parent)}
+                    if current == incoming and all(dest.is_file() and dest.read_bytes() == content
+                                                   for dest, content in staged.items()):
+                        entry.status = "unchanged"
             except (ValueError, TypeError, OverflowError) as error:
                 entry.reason = f"invalid animation {animation_name!r}: {error}"
                 entry.error = True
@@ -214,6 +241,22 @@ def plan_import(source, output, allow_new=False, backup_root=BACKUPS):
             entry.reason = "multiple source animations target this id; keep only one export"
             entry.error = True
     return entries, ignored
+
+
+def runtime_payloads(entry, output):
+    folder = output / entry.emote_id
+    target = folder / (entry.emote_id + ".animation.json")
+    original = validator.read_json(entry.source)
+    payload = (entry.source.read_bytes() if original == entry.document else
+               (json.dumps(entry.document, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"))
+    staged = {target: payload}
+    for asset in assets(entry.source.parent):
+        staged[folder / asset.name] = asset.read_bytes()
+    side = folder / (entry.emote_id + ".quarkos.json")
+    # Keep existing sidecar formatting as well as its presentation settings.
+    staged[side] = (side.read_bytes() if side.is_file() and validator.read_json(side) == entry.metadata else
+                    (json.dumps(entry.metadata, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"))
+    return staged
 
 
 def write_entry(entry, output, backup):
@@ -232,14 +275,7 @@ def write_entry(entry, output, backup):
                 shutil.copy2(original, dest)
     folder.mkdir(parents=True, exist_ok=True)
     # Single-animation exports are copied byte-for-byte, including formatting.
-    original = validator.read_json(entry.source)
-    payload = (entry.source.read_bytes() if original == entry.document else
-               (json.dumps(entry.document, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"))
-    staged = {target: payload}
-    for asset in assets(entry.source.parent):
-        staged[folder / asset.name] = asset.read_bytes()
-    staged[folder / (entry.emote_id + ".quarkos.json")] = (
-        json.dumps(entry.metadata, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+    staged = runtime_payloads(entry, output)
     for dest, content in staged.items():
         temporary = None
         try:
@@ -250,6 +286,10 @@ def write_entry(entry, output, backup):
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
+    # Assets removed by the animator must not linger and bind stale props.
+    for asset in list(assets(folder)):
+        if asset not in staged:
+            asset.unlink()
     if prior is not None and prior != target:
         prior.unlink()
         prior.with_name(validator.stem(prior) + ".quarkos.json").unlink(missing_ok=True)
@@ -259,7 +299,7 @@ def print_report(entries, dry_run):
     table = [("id", "source file", "length (s)", "loop", "bones", "keyframes", "result + reason")]
     for entry in entries:
         reason = entry.reason
-        if dry_run and entry.status != "skipped":
+        if dry_run and entry.status in {"new", "replaced"}:
             reason = "would " + ("replace" if entry.status == "replaced" else "create") + "; " + reason
         if entry.warnings:
             reason += "; WARNING: " + "; ".join(entry.warnings)
@@ -277,7 +317,7 @@ def main(argv=None):
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true", help="write validated candidates and back up replacements")
     mode.add_argument("--dry-run", action="store_true", help="preview without writing anything (the default)")
-    parser.add_argument("--new", action="store_true", help="also import unmatched names as new emotes")
+    parser.add_argument("--new", action="store_true", help="compatibility flag; new names are now imported by default")
     parser.add_argument("--output-dir", type=Path, default=validator.BUILTINS)
     parser.add_argument("--backup-dir", type=Path, default=BACKUPS,
                         help="parent for timestamped replacement backups")
@@ -286,14 +326,14 @@ def main(argv=None):
         print(f"ERROR: source directory does not exist: {args.source}", file=sys.stderr)
         return 1
     try:
-        entries, ignored = plan_import(args.source, args.output_dir, args.new, args.backup_dir)
+        entries, ignored = plan_import(args.source, args.output_dir, True, args.backup_dir)
     except (OSError, ValueError, TypeError, OverflowError) as error:
         print(f"ERROR: cannot read native catalog: {error}", file=sys.stderr)
         return 1
     backup = args.backup_dir / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     if args.apply:
         for entry in entries:
-            if entry.document is not None:
+            if entry.document is not None and entry.status != "unchanged":
                 try:
                     write_entry(entry, args.output_dir, backup)
                 except (OSError, ValueError) as error:
@@ -301,7 +341,7 @@ def main(argv=None):
     print("APPLY" if args.apply else "DRY RUN — no files written")
     print_report(entries, not args.apply)
     counts = Counter(entry.status for entry in entries)
-    print(f"\n{counts['replaced']} replaced; {counts['new']} new; {counts['skipped']} skipped; "
+    print(f"\n{counts['replaced']} replaced; {counts['new']} new; {counts['unchanged']} unchanged; {counts['skipped']} skipped; "
           f"{ignored} JSON files without animations ignored.")
     if not entries:
         print("No animation exports found; work-in-progress folders are OK.")

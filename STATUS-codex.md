@@ -270,3 +270,98 @@ Unverified / TODO for parent:
    translated labels and option tooltips (layout math is not a live UI test).
 4. Retain E4's reload/custom-prop and multiplayer/dedicated-server checks. No
    networking changes here. Parent reviews/stages/commits the working files.
+
+## E6 — animator batch 2, loop seams and hold/exit playback (2026-11-10)
+
+Read `/home/box/blockato/emotes/NOTES_v2.md` as the authoritative animator
+contract. No Gradle invocation, harness/client launch, commit, or `.git` write.
+
+Changes:
+
+- Ship groove, bigdance, bow, salute, laugh, shrug, cheer, point, dab and the
+  original four-second one-shot sit as `sit_full`. All ten animation payloads
+  copy byte-for-byte; sit's filename alone changes, retaining animation.emote.sit
+  inside it. Each has an explicit quarkos_emotes ID and presentation sidecar.
+  Groove/bigdance loop; all eight other batch 2 clips play once. Removed the
+  ten superseded E2 flat files, including both dance IDs and sit. No sit
+  placeholder is shipped. Stretch is untouched. Total: fifteen Blockato exports
+  across batches 1+2, plus stretch = sixteen built-ins.
+- Updated runtime English names, wheel order and initial eight favorites:
+  wave, thinking, clap, tableflip, facepalm, groove, bigdance, cheer. Existing
+  saved favorite lists retain their settings. Updated representative harness
+  freezes, seated framing and dance back/side selections for the new IDs.
+- Catmull–Rom uses Blockbench 5.2.2 loop neighbours: second-to-last before the
+  first key, second after the last duplicate seam key. Applies to player and
+  prop tracks only for Loop.LOOP; once/hold retain clamped neighbours. Tests
+  compare both seam velocities, verify the synthetic expected derivative,
+  and check every rotation/position/scale axis in shipped groove AND bigdance
+  across wrap. Sparse/empty tracks remain supported.
+- Explicit player states: PLAYING -> HOLDING -> BLENDING_OUT -> DONE. Hold
+  reaches the final pose once and stays there until stop; cancellation freezes
+  its current pose. Exit takes .2 s, including normal one-shot completion;
+  entry remains .15 s. Partial-tick sampling also fades across natural end.
+  Cancellation during entry fades from the current weight without increasing
+  the entry weight. Tests cover all modes, repeated stops, a long hold, early
+  cancellation, local/remote play+stop equivalence, and natural endings of all
+  fourteen shipped one-shots (including wave).
+- The existing movement/jump/attack/hurt/death/explicit-cancel path still calls
+  EmotesClient.stop(), which sends the empty-ID stop request. HOLD is not
+  filtered out of movement cancellation. Both Fabric and Forge relay this stop
+  to viewers, whose receive() calls the same EmotePlayer.stop(). No hold-state
+  packets are required. Movement cancellation respects metadata/global settings.
+- Adapted E5's floor correction to the new sit's shared drop plus independent
+  shoulder/torso pivot compensation. Matching leg translations permit a common
+  lift through all six siblings without losing their relative offsets. The
+  four-second sequence is checked at 240 Hz and 21 blend weights for foot
+  clearance throughout entry, seated poses, rising and cancellation blending.
+  Bow tests now use Blockato's front hip-edge pivot and export rounding.
+- `python3 tools/import_blockato.py --apply` now adds unmatched new folders by
+  default, copies changed exports/assets byte-identically, keeps existing
+  sidecar formatting/settings, creates readable default metadata for new IDs,
+  reports unchanged folders without writes/backups, backs up replacements and
+  removes obsolete prop pairs. `--new` remains compatible. One-shot sit maps
+  to sit_full, while a later hold-mode sit maps to sit. If the source retains
+  both old sit and an equivalent canonical sit_full copy, the canonical folder
+  wins; genuinely conflicting duplicate targets still fail.
+- Updated README, format guide, credits, changelogs and store drafts to credit
+  Blockbench animator Blockato for all fifteen batch 1+2 emotes, explain the
+  corrected playback modes/IDs, and document the one-command importer.
+
+Verified without Gradle:
+
+- 34/34 pure-Java JUnit tests pass with cached JUnit 5.11.4 / Gson 2.11.0,
+  `javac --release 21` and the existing `/tmp/e4_test.py` runner.
+- 26/26 Python tests pass with
+  `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -v`.
+  Validator reports exactly 16 valid built-ins / 0 errors; only groove and
+  bigdance loop, all IDs/names resolve, and sit is absent.
+- All four cached-jar `javac --release 21 -proc:none` targets pass using
+  `/tmp/check_emotes_compile.py`: Fabric 1.21.1 / 1.21.11, Forge 52.1.20 /
+  61.2.4. Existing loader deprecation warnings only. This does not validate
+  Stonecutter generation, Mixin annotation processing/remapping or jar builds.
+- Direct byte comparison against animator delivery passes for all fifteen
+  animation exports and both table assets. Stretch has no diff against HEAD.
+- Live intake dry-run succeeds. Later batches are already present, including
+  sit_v2 (hold) and a canonical sit_full copy. Tested the real default-source
+  --apply twice against a TEMPORARY copy of the catalog: first run validates
+  32 emotes (16 new / 1 changed / 14 unchanged / 1 superseded legacy copy),
+  second run makes no changes (31 unchanged / 1 superseded copy). Logs are
+  `/tmp/emotes-e6-import-preview.txt` and `/tmp/emotes-e6-import-apply-{0,1}.txt`.
+  These later batches were not added to the E6 repository catalog.
+- `git diff --check` passes. Temporary scripts, test/compile products, smoke
+  output and intake copies remain under /tmp.
+
+Parent follow-up:
+
+1. Build all four real Gradle targets and run the visual harness (44 captures /
+   18 render checks). Review new batch 2 poses, groove/bigdance wrap over several
+   cycles, entry transitions, sit_full floor placement and cancellation, and
+   every one-shot ending (especially wave). Check Steve AND Alex, first-person,
+   armor/held-item/outer layers and camera restoration as in E5.
+2. Use a temporary custom hold animation (or the now-arrived animator sit_v2 in
+   a separate test pack) to verify play -> hold -> movement/explicit cancel ->
+   .2 s blend-out on two clients for both loaders. E6 intentionally leaves the
+   built-in sit ID free; import later batches in their own content run.
+3. Retain dedicated-server startup, vanilla-server fallback, resource reload,
+   custom geometry/texture, tracking/reconnect and GUI-scale checks from E4/E5.
+   Parent reviews/stages/commits this worktree; no commit was attempted here.
