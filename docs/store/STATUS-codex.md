@@ -101,3 +101,101 @@ this worktree; an applyable patch is provided at
       paths and commit on `content` as Emilio Schwaiger <emilio@quarkos.dev>,
       e.g. `git -c user.name='Emilio Schwaiger' -c user.email=emilio@quarkos.dev commit -m 'Add initial emote content, validator, and authoring docs'`.
       The failed `git add` did not stage the files; stage them before committing.
+
+## 2026-11-09 — run E3, Blockbench intake and content review
+
+### Completed
+
+- Added `tools/import_blockato.py` using only the Python standard library.
+  It recursively discovers animation JSON, resolves names/aliases and
+  filename/folder fallbacks, splits multi-animation exports, preserves native
+  root metadata and exported Bedrock payloads, and canonicalizes prop aliases.
+  Unmatched names require `--new`; ambiguous names remain skipped. Duplicate
+  targets and colliding prop aliases are rejected with an explicit reason.
+- Preview is the default and writes no files, directories, temporary files,
+  backups, or bytecode. `--apply` validates candidates first, copies replaced
+  files to `tools/replaced/<UTC timestamp>/`, writes atomically, and validates
+  the output directory. The report shows source, ID, length, loop, bone/key
+  counts, status, reasons, and missing-prop-model warnings.
+- Extracted the validator's `validate_data` entry point for previews without
+  temporary files. Accepted standard numeric Bedrock single-sided `pre`/`post`
+  keys: the missing side takes the supplied side. Actual Blockbench exports
+  use `post` alone; their keyframes and interpolation are preserved unchanged.
+  Unknown fields, empty keys, invalid vectors, and unsupported tracks still fail.
+- Added twelve `unittest` tests with temporary synthetic fixtures covering
+  names/aliases/fallbacks, dance ambiguity, all three loop modes, prop aliases
+  and warnings, metadata/sound/model preservation, new opt-in, invalid input,
+  duplicate targets, exact backups, atomic output validation, empty work in
+  progress, and previews with no writes.
+- Documented commands, mapping precedence, backup/rollback behavior, report
+  and exit-code semantics, generated metadata/translations, and review limits
+  in “Replacing built-in emotes with Blockbench exports.”
+
+### Review of all sixteen built-ins
+
+Reviewed every channel, then sampled the independent sibling-bone Steve and
+Alex rigs at 20 FPS. Corrected ten files while retaining IDs, lengths, loop
+modes, sound events, and presentation/prop metadata (author notes updated):
+
+- `dance_elaborate`: reversed the incorrect Z pivot orbits during the turn.
+  The old shoulder/hip paths turned opposite the bones, causing torso
+  intersections and crossed legs. Added position keys every 0.05 seconds
+  during the spin to follow circular paths between the old quarter-second
+  keys, cleared shoulders outward by one pixel, and removed arm roll that
+  pushed the raised arm into the head. Preserved the unwrapped 360° turn.
+- `clap`: replaced inward shoulder slides with opposing arm yaw and a small
+  forward offset. Hands converge ahead of the chest; shoulders no longer
+  pass deeply through it. Kept both contact/sound times.
+- `dab`: moved the crossing reach ahead of the face using yaw, reduced its
+  excessive overhead pitch, and corrected the opposite arm's recovery roll.
+- `facepalm`: reduced inward shoulder movement and moved the palm ahead of
+  the forehead, clearing the chest and deep head penetration.
+- `wave`: kept the overhead sweeps outside the head instead of swinging
+  through its side.
+- `salute` and `thinking`: used shoulder yaw and forward clearance instead
+  of placing a shoulder inside the chest; reduced deep face intersections.
+- `dance_groove`, `laugh`, and `stretch`: corrected inward hanging-arm roll
+  and/or inward shoulder offsets that drove arms into the torso.
+
+`bow`, `cheer`, `point`, `shrug`, `sit`, and `table_flip` required no keyframe
+changes. Normal shoulder/hip junction overlap and shallow intentional face
+contact remain; this review does not claim zero cube intersections. In
+particular, torso dips overlap the hip junction on a rigid Steve rig.
+
+### Verified locally
+
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tools.test_import_blockato -v`:
+  **12 tests passed**.
+- `python3 tools/validate_emotes.py`: **16 valid emotes, 0 errors**;
+  **1,856 channel keys/constants**, including 128 added spin position keys.
+- Checked **51 looping channels** for matching endpoints (rotations modulo
+  360°), and **20 held channels** for stable final keys. All pass.
+- Sampled **1,776 rig frames** across all sixteen emotes and both skin rigs,
+  using the animator's read-only `clipcheck.py` math with a 0.25-pixel overlap
+  grid. The corrected spin no longer crosses the legs beyond the rig's
+  normal 0.2-pixel rest overlap; the major arm/torso and arm/head penetrations
+  are removed. Maximum head rotation **relative to the torso** is about
+  **29.28°**, below 70°. Large absolute head Y values in the full-body dance
+  are the intentional shared turn, not neck rotation.
+- Review scratch scripts, original content copies, and detailed audit output
+  are under `/tmp/review_emotes_e3.py`, `/tmp/emotes-e3-original/`, and
+  `/tmp/emotes-e3-pose-audit.json`; they add no project dependency.
+- Ran the importer against `/home/box/blockato/emotes` in dry-run. Five
+  exports had arrived during this session: **clap, facepalm, table_flip,
+  thinking, wave**. All five map and validate as prospective replacements;
+  none were applied. Geometry and other JSON without `animations` are ignored.
+  Export files are being written in parallel, so future intake counts can vary.
+
+### Parent handoff and remaining verification
+
+Changes are left in the `content` worktree for the parent to review and commit.
+No Git commit was attempted. No Java or build files were changed.
+
+The parallel runtime session should support a missing keyframe `pre` or `post`
+by falling back to the supplied side, as documented above. Review actual
+replacements after applying: retained sound times, notes, table geometry,
+and attachment space may need intentional updates for a new motion. The
+current exports also change some loop modes; the importer preserves their
+standard `loop` field. Client rendering, classic/slim skin appearance, prop
+anchoring, and sound playback still require in-game verification; numerical
+rig checks do not establish runtime compatibility.
