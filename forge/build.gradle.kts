@@ -80,6 +80,7 @@ if (minecraftVersion == "forge" || forgeNode == null) {
         into(rootProject.file("forge/src"))
     }
     tasks.named("stonecutterPrepare") { dependsOn(syncBranchSources) }
+    tasks.matching { it.name == "stonecutterPrepareTest" || it.name == "processTestResources" || it.name == "compileTestJava" }.configureEach { dependsOn(syncBranchSources) }
     // Both Forge versions sync the shared tree into forge/src. Order the writes
     // and the reads so a combined compile does not race that directory.
     gradle.projectsEvaluated {
@@ -90,6 +91,7 @@ if (minecraftVersion == "forge" || forgeNode == null) {
                 return@forEach
             }
             tasks.named("stonecutterPrepare").configure { mustRunAfter(otherSync) }
+            tasks.matching { it.name == "stonecutterPrepareTest" || it.name == "processTestResources" || it.name == "compileTestJava" }.configureEach { mustRunAfter(otherSync) }
             if (project.path > other.path) {
                 thisSync.mustRunAfter(otherSync)
             }
@@ -121,6 +123,11 @@ if (minecraftVersion == "forge" || forgeNode == null) {
 
     dependencies {
         add("implementation", forgeMinecraft.dependency("net.minecraftforge:forge:${node.forgeCoordinate}"))
+        // Same pure-Java unit tests as the Fabric targets.
+        add("testImplementation", platform("org.junit:junit-bom:5.11.4"))
+        add("testImplementation", "org.junit.jupiter:junit-jupiter")
+        add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
+        add("testImplementation", "com.google.code.gson:gson:2.11.0")
     }
 
     tasks.named<Jar>("jar") {
@@ -263,4 +270,8 @@ fun seedHarnessOptions(existing: String): String {
         }
     }
     return lines.filter { it.isNotBlank() }.joinToString("\n") + "\n"
+}
+
+if (project.name != "forge" && project.plugins.hasPlugin("java")) {
+    tasks.withType<Test>().configureEach { useJUnitPlatform() }
 }
