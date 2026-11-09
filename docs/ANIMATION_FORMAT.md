@@ -98,8 +98,10 @@ Every time must be within `[0, animation_length]`. Every vector contains
 exactly three finite JSON numbers, not booleans or numeric strings.
 
 A vector key is shorthand for equal incoming (`pre`) and outgoing (`post`)
-values with linear interpolation. An object key requires `pre` and `post`;
-`lerp_mode` is optional and defaults to `linear`. Keep pre/post equal for
+values with linear interpolation. An object key requires at least one of
+`pre` and `post`; an omitted side uses the supplied side. Blockbench commonly
+exports `post` alone, which is preserved by the intake tool. `lerp_mode` is
+optional and defaults to `linear`. Keep pre/post equal for
 continuous movement. Different values create an intentional discontinuity
 at that key. The outgoing key controls the segment toward the next key:
 
@@ -302,8 +304,8 @@ This complete `nod.animation.json` is a short one-shot numeric example:
 6. Export via **Animation > Export Animations** (wording can vary by
    Blockbench release). Export one animation into `<name>.animation.json`,
    using Bedrock animation format `1.8.0`. Inspect the exported JSON: retain
-   standard `loop`, sort times numerically, and normalize object keys to the
-   supported `pre`/`post` form if your exporter only writes one side.
+   standard `loop` and sort times numerically. Numeric `pre`/`post` keys may
+   supply either side alone or both sides.
 7. Restore/add the document-level `quarkos` block after export. Blockbench may
    omit unknown metadata on round trips. For cube props, preserve the cube
    definition as well as the exported prop animation. Add any sound cues.
@@ -333,13 +335,92 @@ version. Minecraft 1.21.1 and 1.21.11 use different resource-pack metadata;
 start from a pack known to load in the intended version. Language entries go
 in `assets/<namespace>/lang/en_us.json`, not `en_us.emotes.json`.
 
-Higher-quality Blockbench exports expected under `/home/box/blockato/emotes/`
-can replace these first-pass assets **by filename and ID**. Do not rename an
-emote, change its category/name key accidentally, swap `loop` for a proprietary
-field, or discard its top-level extension. Copy only after reviewing the
-export; preserve the table's prop and any timed sound intent. Rerun validation
-and inspect the affected motions in game. This content run does not claim
-that those external replacements have arrived or were reviewed.
+## Replacing built-in emotes with Blockbench exports
+
+Run the Python-only intake tool from the repository root. Preview is the
+default; it creates no output, backup, temporary file, or Python bytecode:
+
+```sh
+python3 tools/import_blockato.py
+python3 tools/import_blockato.py /home/box/blockato/emotes --dry-run
+python3 tools/import_blockato.py /home/box/blockato/emotes --apply
+python3 tools/validate_emotes.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tools.test_import_blockato -v
+```
+
+The tool recursively reads `*.json` files with an `animations` object,
+including exports in subfolders and files containing multiple animations.
+Other JSON documents (geometry, clip reports) and non-JSON files such as
+logs, `.bbmodel`, PNG, and GIF are ignored. An intake containing only work
+in progress is successful and reports no exports. Malformed JSON is reported
+as skipped. An absent source directory is an error.
+
+Matching uses the animation name first, then filename, then enclosing folders
+from nearest to farthest **within the intake directory**. Namespace segments
+and the `animation.` prefix are removed; matching ignores case and separators.
+For example, `animation.player.wave` maps to `wave`, while `tableflip`,
+`table-flip`, and `table_flip` map to `table_flip`. `dance` is usable only
+when the native catalog contains one `dance_*` variant. With both bundled
+dances present, supply `dance_groove` or `dance_elaborate` in the name, filename,
+or folder. Two valid exports targeting one ID are both skipped; remove the
+duplicate rather than relying on traversal order. Multiple prop aliases
+mapping to `prop` in one animation are also rejected rather than merged.
+
+For each replacement, the tool:
+
+1. Copies the Bedrock animation payload, retaining bones, numeric keyframes,
+   pre/post shorthand, interpolation, length, standard `loop` (including
+   `hold_on_last_frame`), and `sound_effects` exactly as data. It splits a
+   multi-animation export into one native file per emote and renames the key
+   to `animation.quarkos_emotes.<id>`. JSON whitespace may change.
+2. Renames prop bone aliases `table`, `prop_table`, and `item` to `prop`.
+   All other bone names must already use the supported rig names.
+3. Carries over the destination file's complete document-level `quarkos`
+   block, including name, icon, category, sound, easing, notes, and cube/item
+   prop. This retains the table top and four legs. A delivered prop bone
+   without a metadata prop model is kept and produces a warning.
+4. Validates each candidate **in memory** using `validate_emotes.py` before
+   writing. Unsupported tracks, Molang, invalid loop modes/times, or retained
+   metadata sound times outside the delivered length cause a skip. It does
+   not silently repair, reorder, or discard exported data to pass validation.
+5. With `--apply`, backs up each replaced file byte-for-byte under
+   `tools/replaced/<UTC timestamp>/<id>.animation.json`, then writes via an
+   atomic file replacement. Backups are created only for actual replacements.
+   It runs the validator over the output directory afterward. Preview also
+   validates the existing output, without writing candidates.
+
+The report includes ID, source file, length, loop, bone/keyframe counts, and
+`replaced`, `new`, or `skipped` with the reason; preview rows say “would
+replace/create.” Invalid input, duplicate targets, failed writes, or failed
+validation return exit status 1. Other valid candidates can still import;
+check the whole report. Unmatched or ambiguous names are informational skips.
+For a rollback, copy the desired backup file back to the built-in directory
+and rerun validation. Preview a curated intake before applying a batch.
+
+Unmatched animations stay skipped unless `--new` is supplied:
+
+```sh
+python3 tools/import_blockato.py path/to/intake --new
+python3 tools/import_blockato.py path/to/intake --new --apply
+```
+
+New IDs use the normalized final animation-name segment and get generated
+metadata with `minecraft:paper`, category `fun`, movement cancellation, and
+`emote.quarkos_emotes.<id>` as the name key. Ambiguous names remain skipped
+even with `--new`. Review the generated presentation/prop metadata and add
+the corresponding English translation to `en_us.emotes.json` (and merge it
+into the runtime language file) before the default validator/release. The
+importer's explicit-directory validation checks content without requiring
+that language fragment. `--output-dir` selects a different native catalog
+and destination; `--backup-dir` selects another backup parent, useful for
+testing on a copy.
+
+Metadata preservation does not retime an old sound cue, reposition the table
+geometry to a delivered rig, or update author-facing notes to describe a new
+motion. Review those after replacement, especially when length or loop mode
+changes. Schema validation cannot establish classic/slim skin clearance,
+prop anchoring, sound timing, or renderer compatibility; preview the final
+native file and inspect it in game.
 
 ## Validation
 

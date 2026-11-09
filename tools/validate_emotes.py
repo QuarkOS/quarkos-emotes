@@ -91,9 +91,11 @@ def channel(value, length, where):
         if isinstance(frame, list):
             vec3(frame, label)
         else:
-            obj(frame, label, ("pre", "post"), {"pre", "post", "lerp_mode"})
-            vec3(frame["pre"], label + ".pre")
-            vec3(frame["post"], label + ".post")
+            obj(frame, label, allowed={"pre", "post", "lerp_mode"})
+            require("pre" in frame or "post" in frame, f"{label}: expected pre or post")
+            for side in ("pre", "post"):
+                if side in frame:
+                    vec3(frame[side], label + "." + side)
             require(frame.get("lerp_mode", "linear") in ("linear", "catmullrom", "step"),
                     f"{label}: unknown lerp_mode")
         count += 1
@@ -154,8 +156,13 @@ def metadata(value, inferred_id, length):
 
 
 def validate(path):
+    return validate_data(read_json(path), path.name)
+
+
+def validate_data(data, filename):
+    """Validate an in-memory document without creating a temporary file."""
+    path = Path(filename)
     require(path.name.endswith(".animation.json"), "filename must end in .animation.json")
-    data = read_json(path)
     obj(data, "root", ("format_version", "animations"), {"format_version", "animations", "quarkos"})
     require(data["format_version"] == "1.8.0", "format_version must be 1.8.0")
     animations = data["animations"]

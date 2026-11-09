@@ -7,34 +7,34 @@
       "bones": {
         "right_arm": {
           "rotation": {
-            "0.0": {"pre": [-134, -6, -6], "post": [-134, -6, -6], "lerp_mode": "catmullrom"},
-            "0.25": {"pre": [-135, -6, -6], "post": [-135, -6, -6], "lerp_mode": "catmullrom"},
-            "0.5": {"pre": [-136, -7, -6], "post": [-136, -7, -6], "lerp_mode": "catmullrom"},
-            "0.75": {"pre": [-136, -8, -6], "post": [-136, -8, -6], "lerp_mode": "catmullrom"},
-            "1.0": {"pre": [-135, -8, -6], "post": [-135, -8, -6], "lerp_mode": "catmullrom"},
-            "1.25": {"pre": [-134, -7, -6], "post": [-134, -7, -6], "lerp_mode": "catmullrom"},
-            "1.5": {"pre": [-133, -6, -6], "post": [-133, -6, -6], "lerp_mode": "catmullrom"},
-            "1.75": {"pre": [-132, -5, -6], "post": [-132, -5, -6], "lerp_mode": "catmullrom"},
-            "2.0": {"pre": [-133, -5, -6], "post": [-133, -5, -6], "lerp_mode": "catmullrom"},
-            "2.25": {"pre": [-134, -5, -6], "post": [-134, -5, -6], "lerp_mode": "catmullrom"},
-            "2.5": {"pre": [-134, -6, -6], "post": [-134, -6, -6], "lerp_mode": "catmullrom"},
-            "2.75": {"pre": [-134, -6, -6], "post": [-134, -6, -6], "lerp_mode": "catmullrom"},
-            "3.0": {"pre": [-134, -6, -6], "post": [-134, -6, -6], "lerp_mode": "catmullrom"}
+            "0.0": {"pre": [-120, -32, 0], "post": [-120, -32, 0], "lerp_mode": "catmullrom"},
+            "0.25": {"pre": [-121, -32, 0], "post": [-121, -32, 0], "lerp_mode": "catmullrom"},
+            "0.5": {"pre": [-122, -33, 0], "post": [-122, -33, 0], "lerp_mode": "catmullrom"},
+            "0.75": {"pre": [-122, -34, 0], "post": [-122, -34, 0], "lerp_mode": "catmullrom"},
+            "1.0": {"pre": [-121, -34, 0], "post": [-121, -34, 0], "lerp_mode": "catmullrom"},
+            "1.25": {"pre": [-120, -33, 0], "post": [-120, -33, 0], "lerp_mode": "catmullrom"},
+            "1.5": {"pre": [-119, -32, 0], "post": [-119, -32, 0], "lerp_mode": "catmullrom"},
+            "1.75": {"pre": [-118, -31, 0], "post": [-118, -31, 0], "lerp_mode": "catmullrom"},
+            "2.0": {"pre": [-119, -31, 0], "post": [-119, -31, 0], "lerp_mode": "catmullrom"},
+            "2.25": {"pre": [-120, -31, 0], "post": [-120, -31, 0], "lerp_mode": "catmullrom"},
+            "2.5": {"pre": [-120, -32, 0], "post": [-120, -32, 0], "lerp_mode": "catmullrom"},
+            "2.75": {"pre": [-120, -32, 0], "post": [-120, -32, 0], "lerp_mode": "catmullrom"},
+            "3.0": {"pre": [-120, -32, 0], "post": [-120, -32, 0], "lerp_mode": "catmullrom"}
           },
           "position": {
-            "0.0": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "0.25": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "0.5": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "0.75": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "1.0": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "1.25": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "1.5": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "1.75": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "2.0": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "2.25": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "2.5": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "2.75": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"},
-            "3.0": {"pre": [1.5, -2, 2], "post": [1.5, -2, 2], "lerp_mode": "catmullrom"}
+            "0.0": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "0.25": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "0.5": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "0.75": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "1.0": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "1.25": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "1.5": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "1.75": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "2.0": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "2.25": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "2.5": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "2.75": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"},
+            "3.0": {"pre": [0, 0, -2], "post": [0, 0, -2], "lerp_mode": "catmullrom"}
           }
         },
         "left_arm": {
@@ -98,6 +98,6 @@
     "category": "reaction",
     "cancel_on_move": true,
     "easing": "ease_in_out",
-    "notes": "Rigid Steve arms approximate hand-to-chin contact with a small inward/down/back position offset; head tilt sells the thought. Begins and ends in the same held thinking pose."
+    "notes": "Rigid right hand hovers in front of the chin using shoulder yaw. Small arm and head motion keeps the thought pose alive without sliding the shoulder into the chest. Loop endpoints match."
   }
 }
