@@ -81,7 +81,7 @@ def presentation(document, animation_name):
 def assets(folder):
     """Only runtime files are imported: never projects, previews or clip reports."""
     for path in sorted(folder.iterdir()):
-        if path.is_file() and (path.name.endswith(".geo.json") or
+        if path.is_file() and ((path.name.endswith(".geo.json") and path.with_name(path.name.removesuffix(".geo.json") + ".png").is_file()) or
                 (path.suffix == ".png" and path.with_suffix(".geo.json").is_file())):
             yield path
 
@@ -123,7 +123,7 @@ def load_catalog(output):
     if not output.exists():
         return catalog
     for path in sorted(output.rglob("*.json")):
-        if not validator.animation_file(path):
+        if not validator.discover_animation(path, output):
             continue
         row = validator.validate(path)
         emote_id = validator.stem(path)
@@ -148,6 +148,9 @@ def plan_import(source, output, allow_new=True, backup_root=BACKUPS, include=Non
         # Do not re-ingest output/backups if they happen to be inside the intake.
         if output.resolve() in path.resolve().parents or backup_root.resolve() in path.resolve().parents:
             continue
+        if not validator.discover_animation(path, source):
+            ignored += 1
+            continue
         try:
             document = validator.read_json(path)
             if not isinstance(document, dict) or "animations" not in document:
@@ -162,42 +165,7 @@ def plan_import(source, output, allow_new=True, backup_root=BACKUPS, include=Non
             entry = Entry(path, animation_name)
             describe(entry, animation)
             entries.append(entry)
-            # Delivery archives may coexist with the renamed hold export. Only
-            # a hold-mode canonical sit wins over sit_v2; never pick by filename
-            # alone (the original sit.animation.json was a four-second ONCE).
-            if path.parent.name == "sit" and path.name in {
-                    "sit.animation.json", "sit_v1.animation.json", "sit_v2.animation.json"}:
-                canonical = path.parent / "sit.animation.json"
-                try:
-                    canonical_animations = validator.read_json(canonical).get("animations", {})
-                    canonical_hold = (len(canonical_animations) == 1 and
-                                      next(iter(canonical_animations.values())).get("loop") == "hold_on_last_frame")
-                except (OSError, ValueError, TypeError, AttributeError):
-                    canonical_hold = False
-                if path.name == "sit_v2.animation.json" and canonical_hold:
-                    entry.reason = "hold sit_v2 superseded by hold sit/sit.animation.json"
-                    continue
             emote_id, reason = resolve_id(animation_name, path, source, catalog)
-            # Batch 2's complete sit-down/stand-up clip must leave `sit` free
-            # for the later hold export. Determine this from the loop mode so
-            # a future hold-mode sit imports under its own filename as usual.
-            if (slug(leaf(path.name)) in {"sit", "sit_v1"} and isinstance(animation, dict)
-                    and animation.get("loop") is False):
-                emote_id, reason = "sit_full", ""
-                canonical = source / "sit_full" / "sit_full.animation.json"
-                if canonical.is_file():
-                    try:
-                        newer = validator.read_json(canonical)
-                        # The animator may retain batch 2's old sit delivery
-                        # beside its renamed copy. Prefer the canonical folder
-                        # only when the animation itself is exactly the same.
-                        if (len(newer.get("animations", {})) == 1 and
-                                next(iter(newer["animations"].values())) == animation):
-                            entry.emote_id = emote_id
-                            entry.reason = "legacy sit copy superseded by sit_full/sit_full.animation.json"
-                            continue
-                    except (OSError, ValueError, TypeError):
-                        pass  # Invalid/different duplicates receive normal diagnostics.
             if emote_id is None:
                 if not allow_new or reason.startswith("ambiguous"):
                     entry.reason = reason + ("; use --new to add it" if reason.startswith("unmatched") else "")
@@ -222,8 +190,13 @@ def plan_import(source, output, allow_new=True, backup_root=BACKUPS, include=Non
                     "icon": "minecraft:paper", "category": "fun", "cancel_on_move": True,
                 }
                 prop_bones = set()
-                for geo in path.parent.glob("*.geo.json"):
+                for geo in (p for p in assets(path.parent) if p.name.endswith(".geo.json")):
                     prop_bones.update(validator.validate_geometry(geo))
+                for chain in validator.companions(path):
+                    clip = validator.read_json(chain)
+                    validator.validate_data(clip, chain.name, prop_bones=prop_bones)
+                    mode = next(iter(clip["animations"].values())).get("loop", False)
+                    validator.require(mode == (False if "_enter.animation.json" in chain.name else True), "invalid chain loop mode")
                 bones = animation.get("bones", {})
                 extras = set(bones) - PLAYER_BONES
                 missing = extras - prop_bones
@@ -242,8 +215,8 @@ def plan_import(source, output, allow_new=True, backup_root=BACKUPS, include=Non
                 entry.reason = f"animation {animation_name!r}"
                 if existing and existing[0] == output / emote_id / (emote_id + ".animation.json"):
                     staged = runtime_payloads(entry, output)
-                    current = {p.name for p in assets(existing[0].parent)}
-                    incoming = {p.name for p in assets(path.parent)}
+                    current = {p.name for p in [*assets(existing[0].parent), *validator.companions(existing[0])]}
+                    incoming = {p.name for p in [*assets(path.parent), *validator.companions(path)]}
                     if current == incoming and all(dest.is_file() and dest.read_bytes() == content
                                                    for dest, content in staged.items()):
                         entry.status = "unchanged"
@@ -268,7 +241,7 @@ def runtime_payloads(entry, output):
     payload = (entry.source.read_bytes() if original == entry.document else
                (json.dumps(entry.document, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"))
     staged = {target: payload}
-    for asset in assets(entry.source.parent):
+    for asset in [*assets(entry.source.parent), *validator.companions(entry.source)]:
         staged[folder / asset.name] = asset.read_bytes()
     side = folder / (entry.emote_id + ".quarkos.json")
     # Keep existing sidecar formatting as well as its presentation settings.
@@ -286,6 +259,7 @@ def write_entry(entry, output, backup):
         originals = [prior, prior.with_name(validator.stem(prior) + ".quarkos.json")]
         if prior.parent != output:
             originals.extend(assets(prior.parent))
+            originals.extend(validator.companions(prior))
         for original in originals:
             if original.is_file():
                 dest = backup / original.relative_to(output)
@@ -305,7 +279,7 @@ def write_entry(entry, output, backup):
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
     # Assets removed by the animator must not linger and bind stale props.
-    for asset in list(assets(folder)):
+    for asset in [*assets(folder), *validator.companions(target)]:
         if asset not in staged:
             asset.unlink()
     if prior is not None and prior != target:

@@ -41,8 +41,10 @@ class ValidatorTests(unittest.TestCase):
 
     def test_missing_texture_or_geometry_is_rejected(self):
         (self.folder / "table_prop.png").unlink()
-        with self.assertRaisesRegex(validator.Invalid, "missing prop texture"):
+        with self.assertRaisesRegex(validator.Invalid, "unbound prop"):
             validator.validate(self.folder / "tableflip.animation.json")
+        with self.assertRaisesRegex(validator.Invalid, "missing prop texture"):
+            validator.validate_geometry(self.folder / "table_prop.geo.json")
         (self.folder / "table_prop.geo.json").unlink()
         with self.assertRaisesRegex(validator.Invalid, "unbound prop"):
             validator.validate(self.folder / "tableflip.animation.json")
@@ -62,6 +64,21 @@ class ValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(validator.Invalid, "dimension mismatch"):
             validator.validate_geometry(geo_path)
 
+    def test_orphan_geometry_ignored_and_player_parent_or_cycle_validated(self):
+        geo = self.folder / "table_prop.geo.json"
+        original = validator.read_json(geo)
+        original["minecraft:geometry"][0]["bones"][0]["parent"] = "right_arm"
+        geo.write_text(json.dumps(original))
+        self.assertEqual(validator.validate_geometry(geo), {"table"})
+        for parent in ("unknown", "table"):
+            original["minecraft:geometry"][0]["bones"][0]["parent"] = parent
+            geo.write_text(json.dumps(original))
+            with self.assertRaises(validator.Invalid): validator.validate_geometry(geo)
+        # Unpaired files aren't runtime props and must not be parsed.
+        (self.folder / "orphan.geo.json").write_text("broken ignored geometry")
+        geo.write_bytes((validator.BUILTINS / "tableflip/table_prop.geo.json").read_bytes())
+        self.assertEqual(validator.validate(self.folder / "tableflip.animation.json")[0], "quarkos_emotes:tableflip")
+
     def test_loop_modes_and_sit_full_filename(self):
         for mode in (True, False, "hold_on_last_frame"):
             row = validator.validate_data(export("animation.emote.sit", mode), "sit_full.animation.json")
@@ -70,17 +87,17 @@ class ValidatorTests(unittest.TestCase):
             with self.assertRaises(validator.Invalid):
                 validator.validate_data(export(loop=mode), "bad.animation.json")
 
-    def test_shipped_catalog_has_exact_thirty_two_ids_four_loops_two_holds(self):
-        files = [p for p in validator.BUILTINS.rglob("*.json") if validator.animation_file(p)]
+    def test_shipped_catalog_has_exact_forty_two_ids_eight_loops_five_holds(self):
+        files = [p for p in validator.BUILTINS.rglob("*.json") if validator.discover_animation(p, validator.BUILTINS)]
         rows = [validator.validate(p) for p in files]
-        expected = set("wave thinking clap tableflip facepalm groove bigdance bow salute laugh shrug cheer point dab sit_full stretch yes no cry rage victory heart_hands wave_big backflip spin worm floss tpose zombie_walk slow_clap sleep sit".split())
+        expected = set("wave thinking clap tableflip facepalm groove bigdance bow salute laugh shrug cheer point dab sit_full stretch yes no cry rage victory heart_hands wave_big backflip spin worm floss tpose zombie_walk slow_clap sleep sit jump_hype fishing_cast sword_salute guitar drums pushups default_dance kneel lay_down meditate".split())
         self.assertEqual({r[0] for r in rows}, {"quarkos_emotes:" + name for name in expected})
-        self.assertEqual(len(rows), 32)
-        self.assertEqual({r[0] for r in rows if r[2] == "true"}, {"quarkos_emotes:"+n for n in ("groove", "bigdance", "floss", "zombie_walk")})
-        self.assertEqual({r[0] for r in rows if r[2] == "hold_on_last_frame"}, {"quarkos_emotes:sit", "quarkos_emotes:sleep"})
+        self.assertEqual(len(rows), 42)
+        self.assertEqual({r[0] for r in rows if r[2] == "true"}, {"quarkos_emotes:"+n for n in ("groove", "bigdance", "floss", "zombie_walk", "guitar", "drums", "pushups", "default_dance")})
+        self.assertEqual({r[0] for r in rows if r[2] == "hold_on_last_frame"}, {"quarkos_emotes:"+n for n in ("sit", "sleep", "kneel", "lay_down", "meditate")})
         for name in expected - {"stretch"}:
             side = validator.read_json(validator.BUILTINS / name / (name+".quarkos.json"))
-            self.assertEqual(side.get("arm_pivot", "model"), "steve" if name in {"backflip", "spin", "worm", "sleep"} else "model")
+            self.assertEqual(side.get("arm_pivot", "model"), "steve" if name in {"backflip", "spin", "worm", "sleep", "lay_down", "pushups"} else "model")
         names = validator.read_json(validator.LANG)
         for row in rows:
             self.assertIn(row[5], names)

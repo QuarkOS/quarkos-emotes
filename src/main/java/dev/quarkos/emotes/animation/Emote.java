@@ -4,7 +4,28 @@ import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Map;
 public record Emote(String id, String name, String icon, String category, double length, Loop loop,
-                    boolean cancelOnMove, String easing, Map<String, Bone> bones, List<Sound> sounds, JsonObject prop, List<PropGeometry> props, ArmPivot armPivot) {
+                    boolean cancelOnMove, String easing, Map<String, Bone> bones, List<Sound> sounds, JsonObject prop, List<PropGeometry> props, ArmPivot armPivot, Emote enter, Emote followLoop) {
+    public Emote(String id, String name, String icon, String category, double length, Loop loop,
+                 boolean cancelOnMove, String easing, Map<String,Bone> bones, List<Sound> sounds, JsonObject prop,
+                 List<PropGeometry> props, ArmPivot armPivot) {
+        this(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,props,armPivot,null,null);
+    }
+    public Emote withChain(Emote entry, Emote repeat) {
+        return new Emote(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,props,armPivot,entry,
+                loop==Loop.HOLD?repeat:null);
+    }
+    public double entryLength() { return enter==null?0:enter.length(); }
+    /** Timeline duration, excluding the exit fade. Holds and repeating chains never expire. */
+    public double totalLength() { return loop==Loop.ONCE?entryLength()+length:Double.POSITIVE_INFINITY; }
+    public record Segment(String name, Emote animation, double time) {}
+    public Segment segment(double elapsed) {
+        double t=Math.max(0,elapsed);
+        if(enter!=null && t<enter.length()-1e-9) return new Segment("enter",enter,t);
+        t=Math.max(0,t-entryLength());
+        if(loop==Loop.HOLD && followLoop!=null && t>=length-1e-9)
+            return new Segment("loop",followLoop,followLoop.wrap(Math.max(0,t-length)));
+        return new Segment("main",this,wrap(t));
+    }
     public Emote(String id, String name, String icon, String category, double length, Loop loop,
                  boolean cancelOnMove, String easing, Map<String,Bone> bones, List<Sound> sounds, JsonObject prop, List<PropGeometry> props) {
         this(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,props,ArmPivot.MODEL);
@@ -14,7 +35,7 @@ public record Emote(String id, String name, String icon, String category, double
         this(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,List.of());
     }
     public Emote withProps(List<PropGeometry> geometries) {
-        return new Emote(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,geometries,armPivot);
+        return new Emote(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,geometries,armPivot,enter,followLoop);
     }
     public enum Loop { ONCE, LOOP, HOLD }
     public enum ArmPivot { MODEL, STEVE }

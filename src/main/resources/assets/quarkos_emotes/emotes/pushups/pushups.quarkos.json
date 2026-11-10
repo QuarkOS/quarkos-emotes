@@ -1,0 +1,9 @@
+{
+  "id": "quarkos_emotes:pushups",
+  "name": "emote.quarkos_emotes.pushups",
+  "icon": "minecraft:iron_boots",
+  "category": "pose",
+  "cancel_on_move": true,
+  "easing": "linear",
+  "arm_pivot": "steve"
+}

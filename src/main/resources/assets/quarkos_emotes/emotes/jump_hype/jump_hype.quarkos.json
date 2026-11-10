@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:jump_hype",
+  "name": "emote.quarkos_emotes.jump_hype",
+  "icon": "minecraft:rabbit_foot",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

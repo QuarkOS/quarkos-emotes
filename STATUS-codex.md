@@ -603,3 +603,123 @@ Parent follow-up (explicitly outside this run's execution scope):
    armor/capes and multiplayer on both loaders/versions. No live screenshots
    or Gradle evidence were produced here. Stage/review/commit from the parent
    with writable .git; this run leaves all requested changes in the workspace.
+
+## 2026-11-10 — E9, animator batch 4 / strict discovery / chains / prop parents
+
+Implemented against parent's main @ 6e81597. No Git writes, Gradle invocations,
+Minecraft launches or live screenshots. Read NOTES_v4.md (authoritative),
+RENAMES.md and md5_delivered.txt. Intake has since advanced to v5: inspected
+its sword/archive notes to identify the arrived prop and archived originals;
+retained E8's floss export, now at `_archive/floss/floss.animation.json`, as
+required by this v4 scope. No other retained animation changed. Re-copied
+canonical sit; it already matched the old sit_v2 byte-for-byte, so no diff.
+
+Exactly **42 main IDs**, eight looping mains, five hold mains, 29 one-shots:
+wave, thinking, clap, tableflip, facepalm, groove, bigdance, cheer, bow, salute,
+laugh, shrug, point, dab, sit_full, stretch, yes, no, cry, rage, victory,
+heart_hands, wave_big, backflip, spin, worm, floss, tpose, zombie_walk,
+slow_clap, sleep, sit, jump_hype, fishing_cast, sword_salute, guitar, drums,
+pushups, default_dance, kneel, lay_down, meditate. The 41 animator main clips
+plus pushups_enter and meditate_loop are 43 animation files; stretch makes
+44 animation files total. Chain clips have no separate registry/wheel IDs.
+
+Implementation:
+
+- EmoteFiles is the shared runtime discovery contract for built-ins, packs and
+  config: only `<folder>/<folder>.animation.json` creates an emote; read its
+  optional `_enter` / `_loop` companions, sidecar and paired geometry/PNG.
+  Skip directories starting `_` and all archived versions/proof/authoring files.
+  Flat legacy `.animation.json` and plain `.json` animations still work.
+  Importer and directory validator use the same rule; removed companion clips
+  are backed up/removed like removed prop pairs. E8's sit/sit_v2 special-case
+  is gone. Fixtures exercise unrelated/invalid JSON, archives, companions,
+  exact copying, removal and legacy flat files.
+- Emote owns optional enter and post-hold-loop definitions. Emote.length()
+  stays main length; totalLength() includes entry for once and is infinite for
+  loops/holds. Segment selection uses total elapsed, with repeating phases
+  relative to the handoff. Player sampling, props and sounds use that segment;
+  entry blend happens once, handoffs stay at full weight, any-stage cancel
+  freezes its segment/phase and fades over .2 s. Optional file modes are
+  validated (enter ONCE / companion LOOP); invalid chains log and leave main
+  playback available. withProps and resource rebind preserve chains.
+- Existing one-ID/elapsed protocol needs no version change. seek/rebind selects
+  entry/main/loop from server elapsed and suppresses historical sounds. Added
+  tests for exact boundaries, both delivered seamless handoffs, repeated loop
+  phase, cancellation in every stage, absent/invalid companions, duration,
+  late join/reload and per-segment sounds. Boundary cues use a consistent
+  floating-point tolerance so they fire once at the intended tick.
+- Prop geometry accepts a parent among the six player bones, as well as other
+  prop bones, and still rejects unknown/cyclic parents. Rendering composes the
+  final flat player ModelPart transform (pivot, position, Euler rotation,
+  scale, blend and Steve/Alex policy) before prop rest/animated channels and
+  cube transforms. PropTransform supplies the tested model-origin conversion
+  and pivoted Z/Y/X composition. No-parent props retain root attachment.
+- The delivered sword arrived: sword_prop.geo.json / PNG and revised animation
+  are shipped byte-for-byte. It has NO parent: it copies right_arm channels
+  around [-5,22,0], so adding one would double its motion. Tests cover this
+  delivered convention and a synthetic player-parent/prop-parent fixture;
+  no invented sword is shipped. Harness captures sword_salute at .8 s.
+- Added names, item icons, categories and wheel ordering for all ten additions
+  (six pages). Steve arm pivot sidecars for lay_down/pushups; their entry/main
+  segments share main metadata. Kneel/meditate use only small ordinary torso
+  bends, not whole-rig orbit, so retain model pivots (also confirmed by v5's
+  Alex recheck inventory). Existing orbit sidecars remain unchanged.
+- Harness adds front + 3/4 for all ten. Pushups/meditate seek just before their
+  handoff, advance through real client ticks, log `EMOTE_CHECK chain=... from=...
+  to=... result=PASS`, then freeze at total times 1.8 / 6.6 s (phase .5 / 1 s).
+  A separate counted assertion requires switch + full weight. Kneel/lay_down
+  stay held; prone framing follows sleep/worm. `-Pquick=true` is forwarded for
+  BOTH loaders and selects only front emote views plus UI shots, omitting
+  angle/model/first-person extras. Offline reflection of the actual compiled
+  buildShots/poseTime methods confirms full 107 shots / 77 checks and quick
+  46 shots / 50 checks (42 fronts + four UI shots).
+- Dedicated proof properties set max-tick-time=-1. MP_TIMEOUT_SCALE defaults
+  to 3 (positive integer) for shell process bounds, startup/join/log waits,
+  shutdown grace and the client wall deadline / allowed stop delay. Gesture
+  durations retain authored tick intervals. Both direct game runs and runner
+  inherit/read the env. Updated MP_PROOF with a scale=6 example.
+- Release audit previously still expected 16 files; now requires 42 main
+  animations plus exactly pushups_enter / meditate_loop, rejects archived or
+  extra animation files, and has missing-chain/archive fixtures. Updated
+  README, ANIMATION_FORMAT, CREDITS, changelogs and store drafts/list to 42.
+
+Validation (logs outside shipped files):
+
+- Four-target cached-jar javac --release 21 -proc:none, runtime then proof:
+  Fabric 1.21.1 / 1.21.11, Forge 52.1.20 / 61.2.4. check_compile.py applies
+  Identifier/ResourceLocation and AvatarRenderer/PlayerRenderer substring
+  replacements in BOTH directions. Only existing deprecation/unchecked
+  warnings. Log: /tmp/e9-compile.txt.
+- **61/61 Java JUnit tests pass**, including 12 new BatchFourTest cases.
+  Runner /tmp/e7_test.py, log /tmp/e9-java-tests.txt.
+- **35/35 Python tests pass**, /tmp/e9-python-tests.txt. Retired sit-special-case
+  fixtures were replaced with strict-discovery/chain fixtures; prior tests
+  were adapted to the new catalog/rule. Validator: **42 valid / 0 errors**,
+  /tmp/e9-validation.txt. Final scoped import preview: 11 unchanged, no new
+  or replaced definitions (/tmp/e9-import-final.txt).
+- **47/47 animator runtime payloads byte-identical AND MD5-identical** to their
+  delivered originals: 43 animator animation files and four table/sword geo/PNG
+  files. Floss compares to the v4 archive; all other files compare to canonical
+  delivery paths. /tmp/e9-bytes.txt contains every hash/path. Sit additionally
+  matches archived sit_v2. No animator animation content edited.
+- Offline shot-plan inspection only (no game launch): /tmp/e9-shot-plan.txt.
+  bash -n tools/mp_proof.sh and git diff --check pass.
+
+Parent follow-up:
+
+1. Build/test all four Gradle targets; javac does not validate Kotlin run wiring,
+   Mixin application/remapping or final packaging. Audit the new binary jars.
+2. Run fresh full harness: require EMOTE_SUMMARY pass=77 fail=0 and both chain
+   switch logs. Heavy-load option -Pquick=true expects pass=50 fail=0; review
+   the 46 captures. Focused new set: -Ponly=jump_hype,fishing_cast,sword_salute,
+   guitar,drums,pushups,default_dance,kneel,lay_down,meditate,ui-wheel,ui-config
+   (pass as one comma-separated argument without whitespace). Inspect sword
+   grip/texture, Alex shoulders, prone framing, holds, pushup arm slide and
+   meditate breathing; no live visual proof was produced here.
+3. Repeat fresh dedicated sync/vanilla proof with watchdog disabled and
+   MP_TIMEOUT_SCALE=3 (increase if needed). Require existing actor 4/0,
+   viewer 10/0, vanilla 7/0 and EMOTE_MP_PROOF PASS. Check late join during
+   pushups entry/main and meditate main/loop, movement cancel in each stage,
+   tracking/reload/respawn lifecycle and camera reset. No multiplayer proof
+   was run in this task.
+4. Review/stage/commit from the parent with writable .git.

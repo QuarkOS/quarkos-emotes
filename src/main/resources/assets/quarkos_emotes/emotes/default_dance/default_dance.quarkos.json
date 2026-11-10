@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:default_dance",
+  "name": "emote.quarkos_emotes.default_dance",
+  "icon": "minecraft:jukebox",
+  "category": "dance",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

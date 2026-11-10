@@ -10,8 +10,7 @@ public record PropGeometry(String texture,int textureWidth,int textureHeight,Lis
     public record Bone(String name,String parent,Vec3 pivot,Vec3 rotation,List<Cube> cubes) {
         public Bone { cubes=List.copyOf(cubes); }
         public Emote.Pose sample(EmotePlayer player,double partial) {
-            var track=player.emote().bones().get(name);
-            return track==null?new Emote.Pose(Vec3.ZERO,Vec3.ZERO,Vec3.ONE):track.sample(player.time(partial),player.emote().easing(),player.emote().loop()==Emote.Loop.LOOP);
+            return player.pose(partial).getOrDefault(name,new Emote.Pose(Vec3.ZERO,Vec3.ZERO,Vec3.ONE));
         }
     }
     public PropGeometry { bones=List.copyOf(bones); }
@@ -46,7 +45,7 @@ public record PropGeometry(String texture,int textureWidth,int textureHeight,Lis
                 while(cursor!=null) {
                     if(!visited.add(cursor.name()))throw new IllegalArgumentException("Geometry parent cycle");
                     String parent=cursor.parent();
-                    cursor=parent==null?null:bones.stream().filter(b->b.name().equals(parent)).findFirst()
+                    cursor=parent==null||PropTransform.PLAYER_BONES.contains(parent)?null:bones.stream().filter(b->b.name().equals(parent)).findFirst()
                             .orElseThrow(()->new IllegalArgumentException("Missing geometry parent "+parent));
                 }
             }

@@ -27,6 +27,7 @@ tasks.withType<JavaExec>().configureEach {
         classpath(proof.output)
         providers.gradleProperty("runDir").orNull?.let { workingDir(rootProject.file(it)) }
         if (isClient) {
+            systemProperty("quarkos_emotes.quick", providers.gradleProperty("quick").orNull ?: "false")
             for (key in listOf("joinServer", "role", "vanilla")) {
                 providers.gradleProperty(key).orNull?.let { systemProperty("quarkos_emotes.$key", it) }
             }
@@ -51,6 +52,7 @@ tasks.withType<JavaExec>().configureEach {
                 val port = (providers.gradleProperty("port").orNull ?: "25599").toInt()
                 require(port in 1..65535) { "port must be between 1 and 65535" }
                 workingDir.resolve("server.properties").writeText("""
+                    max-tick-time=-1
                     online-mode=false
                     server-ip=127.0.0.1
                     server-port=$port

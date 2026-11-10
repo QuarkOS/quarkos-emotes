@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:guitar",
+  "name": "emote.quarkos_emotes.guitar",
+  "icon": "minecraft:note_block",
+  "category": "dance",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

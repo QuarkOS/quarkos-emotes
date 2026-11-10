@@ -6,6 +6,7 @@ import sys
 import tomllib
 import zipfile
 from pathlib import Path
+from validate_emotes import discover_animation
 
 def audit(path):
     errors=[]
@@ -34,7 +35,11 @@ def audit(path):
             if n in names and re.search(r'example\.(com|org|invalid)|YOUR[_ -]|TODO|PLACEHOLDER',jar.read(n).decode(),re.I):errors.append('placeholder release metadata')
         mixins=json.loads(jar.read('quarkos_emotes.mixins.json'))
         if not {'ServerTickMixin','ServerTrackingMixin'} <= set(mixins.get('mixins',[])):errors.append('missing common server hooks')
-        if len([n for n in names if n.endswith('.animation.json')])!=16:errors.append('expected 16 animations')
+        root=Path('assets/quarkos_emotes/emotes')
+        clips={Path(n) for n in names if n.startswith(str(root)+'/') and n.endswith('.animation.json')}
+        mains={p for p in clips if discover_animation(p,root)}
+        chains={root/'pushups/pushups_enter.animation.json',root/'meditate/meditate_loop.animation.json'}
+        if len(mains)!=42 or clips-mains!=chains:errors.append('expected 42 main emotes plus 2 chain clips')
     return errors
 
 if __name__=='__main__':

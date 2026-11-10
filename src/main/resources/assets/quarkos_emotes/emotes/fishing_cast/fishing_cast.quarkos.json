@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:fishing_cast",
+  "name": "emote.quarkos_emotes.fishing_cast",
+  "icon": "minecraft:fishing_rod",
+  "category": "fun",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

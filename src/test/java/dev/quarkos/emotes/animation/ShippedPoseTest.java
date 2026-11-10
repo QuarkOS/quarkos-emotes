@@ -82,19 +82,19 @@ class ShippedPoseTest {
             assertEquals(0,p.weight(0),1e-8,name);
         }
     }
-    @Test void allThirtyTwoShippedIdsAndNamesResolveFromFlatAndFolderFiles() throws IOException {
+    @Test void allFortyTwoShippedIdsAndNamesResolveFromFlatAndFolderFiles() throws IOException {
         Set<String> ids=new HashSet<>();JsonObject lang;
         try(var reader=resource("/assets/quarkos_emotes/lang/en_us.json")){lang=JsonParser.parseReader(reader).getAsJsonObject();}
 
-        for(String name:List.of("wave","thinking","tableflip","facepalm","clap","bow","salute","laugh","dab","sit_full","groove","bigdance","shrug","point","cheer","stretch","yes","no","cry","rage","victory","heart_hands","wave_big","backflip","spin","worm","floss","tpose","zombie_walk","slow_clap","sleep","sit")) {
+        for(String name:List.of("wave","thinking","tableflip","facepalm","clap","bow","salute","laugh","dab","sit_full","groove","bigdance","shrug","point","cheer","stretch","yes","no","cry","rage","victory","heart_hands","wave_big","backflip","spin","worm","floss","tpose","zombie_walk","slow_clap","sleep","sit","jump_hype","fishing_cast","sword_salute","guitar","drums","pushups","default_dance","kneel","lay_down","meditate")) {
             var e=load(name,!name.equals("stretch"));
             assertEquals("quarkos_emotes:"+name,e.id());assertTrue(ids.add(e.id()));
             assertTrue(lang.has(e.name()),"Missing display name: "+e.name());
         }
-        assertEquals(32,ids.size());
+        assertEquals(42,ids.size());
         try {
             var folder=java.nio.file.Path.of(Objects.requireNonNull(getClass().getResource(ROOT)).toURI());
-            assertEquals(32,EmoteFiles.discover(folder).size(),"no unlisted or duplicate built-ins");
+            assertEquals(42,EmoteFiles.discover(folder).size(),"no unlisted or duplicate built-ins");
         } catch(java.net.URISyntaxException e) {throw new AssertionError(e);}
     }
 }

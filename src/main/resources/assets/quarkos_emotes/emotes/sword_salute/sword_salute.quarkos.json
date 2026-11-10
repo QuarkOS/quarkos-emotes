@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:sword_salute",
+  "name": "emote.quarkos_emotes.sword_salute",
+  "icon": "minecraft:iron_sword",
+  "category": "greeting",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

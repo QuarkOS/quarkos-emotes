@@ -16,7 +16,7 @@ public final class PropLayer extends RenderLayer<AvatarRenderState,PlayerModel> 
         if(state.isInvisible||state.isSpectator)return;
         var mc=Minecraft.getInstance();var entity=mc.level==null?null:mc.level.getEntity(state.id);
         if(!(entity instanceof net.minecraft.world.entity.LivingEntity living))return;
-        GeometryProps.draw(state.id,state.ageInTicks-(float)Math.floor(state.ageInTicks),pose,(cube,texture,stack)->
+        GeometryProps.draw(state.id,state.ageInTicks-(float)Math.floor(state.ageInTicks),getParentModel(),pose,(cube,texture,stack)->
                 collector.submitModelPart(cube,stack,net.minecraft.client.renderer.rendertype.RenderTypes.entityCutout(texture),light,
                         net.minecraft.client.renderer.entity.LivingEntityRenderer.getOverlayCoords(state,0),null));
         PropAttachment.draw(state.id,state.ageInTicks-(float)Math.floor(state.ageInTicks),getParentModel(),pose,(item,stack)->{
@@ -34,7 +34,7 @@ public final class PropLayer extends RenderLayer<AbstractClientPlayer,PlayerMode
     public PropLayer(net.minecraft.client.renderer.entity.player.PlayerRenderer parent) { super(parent); }
     @Override public void render(PoseStack pose,MultiBufferSource buffer,int light,AbstractClientPlayer player,float swing,float amount,float partial,float age,float yaw,float pitch) {
         if(player.isInvisible()||player.isSpectator())return;
-        GeometryProps.draw(player.getId(),partial,pose,(cube,texture,stack)->cube.render(stack,
+        GeometryProps.draw(player.getId(),partial,getParentModel(),pose,(cube,texture,stack)->cube.render(stack,
                 buffer.getBuffer(net.minecraft.client.renderer.RenderType.entityCutout(texture)),light,
                 net.minecraft.client.renderer.entity.LivingEntityRenderer.getOverlayCoords(player,0)));
         PropAttachment.draw(player.getId(),partial,getParentModel(),pose,(item,stack)->Minecraft.getInstance().getItemRenderer()

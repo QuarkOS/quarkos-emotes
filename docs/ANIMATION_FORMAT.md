@@ -1,22 +1,19 @@
 # QuarkOS Emotes animation format
 
 The runtime reads numeric Blockbench Bedrock animations (`format_version`
-`1.8.0`), without executable Molang. There are exactly **32 built-ins**:
-31 byte-identical animator exports by **Blockato**, batches 1–3, plus stretch.
-The authoritative delivery contract is `NOTES_v3.md` with `md5_delivered.txt`.
-The complete list is in [README](../README.md). Groove, bigdance, floss and
-zombie_walk loop; sit and sleep hold their last frame; the other 26 play once.
-Keys are on the 20 fps grid, predominantly Catmull–Rom. Keep exported animation
-files unchanged and presentation settings in sidecars.
+`1.8.0`), without executable Molang. There are exactly **42 built-ins**:
+41 emotes by **Blockato**, batches 1–4, plus stretch. Two companion chain clips
+are additional files, never additional IDs. The authoritative contract is
+`NOTES_v4.md`, `RENAMES.md` and `md5_delivered.txt`; the arrived sword prop is included and floss retains
+the v4 bytes now archived under `_archive/floss/`. The complete list is in [README](../README.md). Eight main clips loop,
+five main clips hold, and 29 play once. Keep animator exports byte-identical
+and presentation settings in sidecars.
 
-Sit has ID `quarkos_emotes:sit`, animation key `animation.emote.sit`, and a
-1.10-second down-and-hold clip. Import `sit/sit.animation.json` **only when its
-animation is `hold_on_last_frame`**; otherwise prefer `sit/sit_v2.animation.json`.
-Ship the selected bytes as `emotes/sit/sit.animation.json`. The original
-four-second one-shot canonical sit must never replace the hold. Archived
-`sit_v1` is superseded by an equivalent canonical `sit_full` delivery.
-`sit_full/sit_full.animation.json` remains a one-shot, with its delivered
-`animation.emote.sit_full` key, copied byte-for-byte.
+Sit has ID `quarkos_emotes:sit`, key `animation.emote.sit`, and a 1.10-second
+hold clip. Load **only `sit/sit.animation.json`** (now byte-identical to the
+old sit_v2). Ignore sit_v1/sit_v2 and `_archive`; no mode-dependent filename
+fallback remains. `sit_full/sit_full.animation.json` retains the four-second
+one-shot and delivered `animation.emote.sit_full` key.
 
 ## Files, IDs and overrides
 
@@ -33,9 +30,14 @@ assets/<namespace>/emotes/tableflip/
 ```
 
 The same flat/folder layouts work below `config/quarkos_emotes/emotes/`.
-Folder animation files must end in `.animation.json`; flat files may also end
-in `.json`. Geometry and metadata JSON files are excluded from animation
-scanning. Resource reload (F3+T) reloads animations, geometry and textures.
+In a folder `<folder>/`, read only `<folder>.animation.json`, optional
+`<folder>_enter.animation.json` and `<folder>_loop.animation.json`, prop pairs
+`<base>.geo.json` + `<base>.png`, and `<folder>.quarkos.json`. Each prop needs
+both files. Ignore every other file (sit_v1/sit_v2, clipcheck, GIF, bbmodel,
+preview PNG, extra JSON). Skip any directory whose name begins with `_`,
+including its descendants. This rule is identical for built-ins, packs, config,
+the importer and directory validation. Flat legacy `emotes/*.animation.json`
+and plain `.json` animations continue to work; they have no chain companions. Resource reload (F3+T) reloads animations, geometry and textures.
 
 The default ID is `<resource namespace>:<filename stem without .animation>`;
 `emotes/tableflip/tableflip.animation.json` is `quarkos_emotes:tableflip`,
@@ -48,8 +50,7 @@ resource path when replacing an animation and its companion assets in a pack.
 
 Ship only runtime animation JSON, metadata sidecars, prop geometry JSON and
 textures. Do not ship `.bbmodel`, preview GIF/PNG, reference rigs, clipcheck
-reports or authoring tools in an emote folder. Every `.geo.json` in that
-folder is treated as a prop.
+reports or authoring tools in an emote folder. Every matching geometry/PNG pair in that folder is treated as a prop.
 
 ## Flat player rig and additive transforms
 
@@ -96,11 +97,11 @@ change its collision box.
 
 ## Whole-body orbit without a root bone
 
-Backflip, spin, worm and sleep are baked across all six sibling bones. The
+Backflip, spin, worm, sleep, lay_down and pushups are baked across all six sibling bones. The
 animator writes each bone's composed **unwrapped Euler rotation** and an
 orbit position offset `G(pivot) − pivot` around a shared centre. Apply those
 channels directly; adding a root transform would apply the movement twice.
-Orbit offsets use Steve's pivots, so these four sidecars set `"arm_pivot": "steve"`.
+Orbit offsets use Steve's pivots, so these six sidecars set `"arm_pivot": "steve"`.
 Otherwise Alex's 0.5-pixel pivot difference yields shoulder drift of
 `|(R−I)·(0,0.5,0)|` (0.71 px at 90°, 1 px at 180°). The lying sleep/worm head
 also has an intentional 2-pixel offset to rest at torso height; retain it.
@@ -158,6 +159,38 @@ trajectory, so blending an inverted table back to rest cannot pull it through
 the floor. Movement cancellation follows the emote metadata
 and global setting.
 
+## Chaining and elapsed time
+
+A folder's optional `<name>_enter.animation.json` must be a one-shot. It plays
+once, then the main `<name>.animation.json` starts at t=0. Pushups enters the
+plank for 1.3 seconds, then repeats its 2-second main loop without reentering.
+An optional `<name>_loop.animation.json` must loop and is used only when the
+main clip is `hold_on_last_frame`. After the main reaches its last frame it
+switches directly to that loop; meditate enters over 5.6 seconds, then repeats
+a 2-second breath until movement/cancel. Without companions ordinary playback
+is unchanged: once, loop or held last frame. Invalid companion files are logged;
+the main emote remains available without the invalid chain.
+
+Handoff frames must match; there is **no blend between segments**. Blend-in
+happens only at the start of the emote. Cancellation in any segment freezes
+that segment and phase and fades the player pose over 0.2 seconds. Props hide
+immediately. Natural completion of entry + one-shot main uses the same fade.
+Metadata, pivot policy, props and the public ID always belong to the main emote;
+companions supply their own animation tracks, interpolation and sound timeline.
+
+The wire still sends one emote ID and total elapsed milliseconds. For elapsed
+`E` and entry length `A` (zero if absent): while `E < A`, sample entry at `E`;
+otherwise let `T = E - A`. A repeating main samples `T % main_length`; a once
+main clamps at its end. For a held main with a loop companion of length `L`,
+when `T >= main_length` sample `(T - main_length) % L` in the loop companion.
+Otherwise hold the main endpoint. Late viewers and resource rebinds use these
+same equations, skip historical sounds and keep advancing normally.
+
+`Emote.length()` is the main clip length. `totalLength()` is entry + main for
+one-shots and infinity for repeating or held emotes; the 0.2-second fade is
+excluded. `EmotePlayer.time()` reports the current segment phase; `segment()`
+identifies enter/main/loop. Neither companion creates a wheel or network ID.
+
 ## Props: geometry + matching PNG
 
 Load **every** `<base>.geo.json` next to a folder animation together with
@@ -165,7 +198,8 @@ Load **every** `<base>.geo.json` next to a folder animation together with
 `minecraft:geometry`, a description with texture dimensions, and named bones
 containing cubes. Box UVs (`"uv": [u,v]`), cube `origin`/`size`, bone and cube
 `pivot`/`rotation`, mirror and inflate are supported. Texture dimensions must
-match the PNG. Bone parents, when supplied, refer to other geometry bones.
+match the PNG. Bone parents may refer to another geometry bone or one of the
+six player bones; unknown parents and parent cycles are rejected.
 Per-face UV objects and material/controller systems are outside this subset.
 
 A prop binds to animation channels by the **exact bone name inside the geo**.
@@ -173,8 +207,21 @@ The shipped `table_prop.geo.json` defines `table`; animation channels are
 `bones.table`. Never rename that bone to `prop` or bind using `table_prop`.
 Use unique prop names that do not clash with the six vanilla bones.
 
-Props attach to the **player root**, rotate with body yaw, and inherit no
-limb transform. They are temporary visuals, not placed blocks or inventory
+Props without a parent attach to the **player root** and rotate with body
+yaw (tableflip). A geometry bone with `"parent": "right_arm"`, for example,
+inherits that flat player's animated pivot + position + Z/Y/X rotation + scale,
+then applies its own rest rotation and animated channels about its own pivot.
+Cube transforms follow last. In matrix order this is
+`M_player_parent * M_prop_bone * M_cube`. Geometry pivots remain absolute
+Bedrock coordinates; subtract the parent's rest pivot before applying its
+posed ModelPart transform. The final rendered limb includes blend weight,
+vanilla baseline and the Steve/Alex pivot policy. A rotated body cannot carry
+a right-arm child because the six player bones stay siblings.
+
+The delivered sword uses the older flat convention: no parent and copied
+right_arm rotation/position tracks. Preserve that export as delivered; adding
+a parent would apply its arm motion twice. A synthetic parented prop is covered
+by tests. Props are temporary visuals, not placed blocks or inventory
 items. Render with the matching PNG using `entityCutout`, entity light and
 hurt overlay. Geometry pivots are absolute Bedrock pixels: apply the animated
 bone transform about that pivot, then each cube's local pivot/rotation.
@@ -239,12 +286,11 @@ Unchanged runtime files are reported and skipped without writes or backups.
 New sidecars use a readable literal name, paper icon, fun category and movement
 cancellation; review their presentation before release. Existing sidecars are
 kept (including formatting), unless the source delivers replacement metadata.
-For E8, pass `--include` with the comma-separated names in README to keep the
-catalog at 32 even when the intake contains later batches. Omit it to import
-all delivered names. The sit selection rule above takes precedence over generic
-duplicate detection: canonical hold wins over v2; old canonical one-shot falls
-back to v2. Equivalent archived one-shots defer to canonical sit_full. Other
-conflicting duplicate targets remain errors.
+For E9, pass `--include` with the additions and sit refresh in README to
+retain the 32 E8 definitions and add ten emotes. Later revisions of retained
+emotes (for example v5 floss) are outside this v4 content run. Omit it to import
+all delivered names. Strict filename discovery handles sit exactly like every
+other folder. Conflicting duplicate targets remain errors.
 
 It preserves animation and bone names, numeric channels, loop modes and sounds.
 Single-animation files copy byte-for-byte; multi-animation documents split
@@ -252,9 +298,9 @@ without renaming keys. Runtime folder assets (`*.geo.json` and their matching `*
 together, excluding authoring projects and reports. A delivered sidecar wins;
 otherwise existing destination metadata is kept in a sidecar, or defaults
 are generated. Metadata is never injected into an animator export. Replaced
-animation, sidecar, geometry and PNG files are backed up under
+animation, companion chain, sidecar, geometry and PNG files are backed up under
 `tools/replaced/<UTC timestamp>/` with relative paths preserved. Flat
-replacements migrate to the folder layout. Removed prop pairs are backed up
+replacements migrate to the folder layout. Removed prop pairs and companion clips are backed up
 and removed from the destination. Preview writes nothing.
 
 The validator checks numeric animation content, unique IDs, companion geometry,

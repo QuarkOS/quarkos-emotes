@@ -1,0 +1,9 @@
+{
+  "id": "quarkos_emotes:lay_down",
+  "name": "emote.quarkos_emotes.lay_down",
+  "icon": "minecraft:white_bed",
+  "category": "pose",
+  "cancel_on_move": true,
+  "easing": "linear",
+  "arm_pivot": "steve"
+}

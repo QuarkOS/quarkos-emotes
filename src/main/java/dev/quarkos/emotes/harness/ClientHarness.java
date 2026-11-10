@@ -20,7 +20,9 @@ public final class ClientHarness {
     private static Stage stage=Stage.TITLE;
     private static int ticks,index,wait,pass,fail;
     private static boolean queued,moved,summary,optionsReady,handMoved;
-    private static boolean restoringCamera;
+    private static boolean restoringCamera,chainSwitched;
+    private static String chainFrom;
+    private static final boolean QUICK=Boolean.getBoolean("quarkos_emotes.quick");
     private static int restoreTicks;
     private static double bodyX,bodyY;
     public static String model="steve";
@@ -57,10 +59,18 @@ public final class ClientHarness {
             case "worm" -> 1.25;
             case "floss", "zombie_walk" -> .25;
             case "tpose" -> .5;
-            case "sit", "sleep" -> e.length();
+            case "sit", "sleep", "kneel", "lay_down" -> e.length();
+            case "jump_hype" -> 1.4;
+            case "fishing_cast" -> .6;
+            case "sword_salute" -> .8;
+            case "guitar" -> .5;
+            case "drums" -> 1.75;
+            case "default_dance" -> 3.25;
+            case "pushups" -> e.entryLength()+.5;
+            case "meditate" -> e.length()+1;
             default -> Math.min(1,e.length()/2);
         };
-        return Math.min(time,e.length());
+        return time;
     }
     public static void rotation(int entity,float x,float y) {
         var mc=Minecraft.getInstance();
@@ -143,14 +153,14 @@ public final class ClientHarness {
             String name=e.id().split(":",2)[1].replace('/','_');
             boolean all=only.contains("")||only.contains(name)||only.contains(e.id())||only.contains("emote-"+name);
             if(all) list.add(new Shot("emote-"+name,e.id(),CameraType.THIRD_PERSON_FRONT,""));
-            if(all||only.contains("emote-"+name+"-34")) list.add(new Shot("emote-"+name+"-34",e.id(),CameraType.THIRD_PERSON_FRONT,"34"));
-            if(Set.of("backflip","worm","floss").contains(name))for(String model:List.of("steve","alex")) {
+            if(!QUICK&&(all||only.contains("emote-"+name+"-34"))) list.add(new Shot("emote-"+name+"-34",e.id(),CameraType.THIRD_PERSON_FRONT,"34"));
+            if(!QUICK&&Set.of("backflip","worm","floss").contains(name))for(String model:List.of("steve","alex")) {
                 String variant="emote-"+name+"-"+model;
                 if(all||only.contains(variant))list.add(new Shot(variant,e.id(),CameraType.THIRD_PERSON_FRONT,"34"));
             }
-            if(name.equals("spin")&&(all||only.contains("emote-spin-90")))
+            if(!QUICK&&name.equals("spin")&&(all||only.contains("emote-spin-90")))
                 list.add(new Shot("emote-spin-90",e.id(),CameraType.THIRD_PERSON_FRONT,"90"));
-            if(Set.of("tableflip","groove","bigdance","backflip","worm").contains(name)) {
+            if(!QUICK&&Set.of("tableflip","groove","bigdance","backflip","worm").contains(name)) {
                 if(!Set.of("backflip","worm").contains(name)&&(all||only.contains("emote-"+name+"-back")))
                     list.add(new Shot("emote-"+name+"-back",e.id(),CameraType.THIRD_PERSON_BACK,""));
                 if(all||only.contains("emote-"+name+"-side")) list.add(new Shot("emote-"+name+"-side",e.id(),CameraType.THIRD_PERSON_FRONT,"side"));
@@ -158,7 +168,7 @@ public final class ClientHarness {
         }
         String wave=EmoteResources.REGISTRY.all().stream().filter(e->e.id().endsWith(":wave")).map(Emote::id).findFirst()
                 .orElse(EmoteResources.REGISTRY.all().isEmpty()?"":EmoteResources.REGISTRY.all().getFirst().id());
-        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","fp-wave","fp-wave-camera","fp-sleep","fp-sleep-camera")) if(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel")))
+        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","fp-wave","fp-wave-camera","fp-sleep","fp-sleep-camera")) if((!QUICK||ui.startsWith("ui-"))&&(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel"))))
             list.add(new Shot(ui,ui.startsWith("fp-sleep")?"quarkos_emotes:sleep":wave,
                     ui.equals("fp-wave")||ui.equals("fp-sleep")?CameraType.FIRST_PERSON:CameraType.THIRD_PERSON_FRONT,ui));
         if(list.isEmpty())throw new IllegalArgumentException("No screenshots match quarkos_emotes.only");
@@ -196,7 +206,7 @@ public final class ClientHarness {
             }
             if(shot.id().endsWith(":sit_full")||shot.id().endsWith(":sit")) { portraitDistance=2.25f;portraitDrop=1.05f; }
             if(shot.id().endsWith(":backflip")) { portraitDistance=3.3f;portraitDrop=0; }
-            if(shot.id().endsWith(":worm")||shot.id().endsWith(":sleep")) { portraitDistance=3.0f;portraitDrop=1.3f; }
+            if(Set.of("quarkos_emotes:worm","quarkos_emotes:sleep","quarkos_emotes:lay_down","quarkos_emotes:pushups").contains(shot.id())) { portraitDistance=3.0f;portraitDrop=1.3f; }
             boolean cameraShot=shot.ui().endsWith("-camera");
             EmoteConfig.get().firstPerson=cameraShot?EmoteConfig.FirstPerson.THIRD_PERSON_CAMERA:EmoteConfig.FirstPerson.SHOW_ARMS;
             mc.options.setCameraType(shot.camera());
@@ -204,8 +214,14 @@ public final class ClientHarness {
                 mc.options.setCameraType(CameraType.FIRST_PERSON);EmotesClient.play(shot.id());
                 if(mc.options.getCameraType()!=CameraType.THIRD_PERSON_BACK) throw new IllegalStateException("First-person camera mode did not switch");
             } else EmotesClient.preview(shot.id());
-            var p=EmotesClient.player(mc.player.getUUID());if(p!=null)p.freeze(shot.ui().equals("90")?.63:
-                    p.emote().loop()==Emote.Loop.HOLD?p.emote().length()+1:poseTime(p.emote()));
+            var p=EmotesClient.player(mc.player.getUUID());chainSwitched=false;chainFrom=null;
+            if(p!=null) {
+                if(p.emote().enter()!=null||p.emote().followLoop()!=null) {
+                    double boundary=p.emote().enter()!=null?p.emote().entryLength():p.emote().length();
+                    p.seek(boundary-.1);chainFrom=p.segment(0).name();
+                } else p.freeze(shot.ui().equals("90")?.63:
+                        p.emote().loop()==Emote.Loop.HOLD?p.emote().length()+1:poseTime(p.emote()));
+            }
             // F1 also hides the first-person hands. Keep the normal HUD for that evidence shot.
             mc.options.hideGui=!(shot.ui().equals("fp-wave")||shot.ui().equals("fp-sleep"));
             if(shot.ui().startsWith("ui-wheel")) { var wheel=new EmoteWheelScreen();mc.setScreen(wheel);if(shot.ui().endsWith("hover"))wheel.harnessHover=0; }
@@ -216,6 +232,12 @@ public final class ClientHarness {
             }
             LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_SHOT name={} time={} camera={} distance={} orbit={} guiScale={} effectiveScale={}",
                     shot.name(),p==null?0:p.time(0),mc.options.getCameraType(),portraitDistance,portraitOrbit,GUI_SCALE,mc.getWindow().getGuiScale());
+        }
+        var chainPlayer=EmotesClient.player(mc.player.getUUID());
+        if(chainFrom!=null&&!chainSwitched&&chainPlayer!=null&&!chainPlayer.segment(0).name().equals(chainFrom)) {
+            chainSwitched=true;
+            LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK chain={} from={} to={} result=PASS",shot.id(),chainFrom,chainPlayer.segment(0).name());
+            chainPlayer.freeze(poseTime(chainPlayer.emote()));
         }
         wait++;
         if(wait<35) return;
@@ -234,7 +256,9 @@ public final class ClientHarness {
             check(shot.name()+"-model",slim==model.equals("alex"),"forced_skin_and_model="+model);
         }
         var playback=EmotesClient.player(mc.player.getUUID());
-        if(shot.id().equals("quarkos_emotes:sit")||shot.id().equals("quarkos_emotes:sleep"))
+        if(chainFrom!=null)check(shot.name()+"-chain",chainSwitched&&playback!=null&&playback.weight(0)==1,
+                "segment_switched_without_blend");
+        if(Set.of("quarkos_emotes:sit","quarkos_emotes:sleep","quarkos_emotes:kneel","quarkos_emotes:lay_down").contains(shot.id()))
             check(shot.name()+"-hold",playback!=null&&playback.state()==EmotePlayer.State.HOLDING&&playback.weight(0)==1,
                     "held_final_pose_survives_anchor");
         if(shot.name().startsWith("emote-")&&!shot.name().endsWith("-back")&&!shot.name().endsWith("-side")&&!shot.name().endsWith("-34")) {

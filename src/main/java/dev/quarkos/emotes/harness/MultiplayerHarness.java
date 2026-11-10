@@ -24,6 +24,11 @@ public final class MultiplayerHarness {
     private static boolean localHandRendered;
     public static void recordHand(boolean changed) {if(active()&&VANILLA)localHandRendered|=changed;}
     private static Path waveShot,danceShot,hintShot;
+    private static final long TIMEOUT_SCALE=timeoutScale();
+    private static long timeoutScale() {
+        try { return Math.max(1,Long.parseLong(System.getenv().getOrDefault("MP_TIMEOUT_SCALE","3"))); }
+        catch(NumberFormatException e) { return 3; }
+    }
     private static final long START=System.nanoTime();
     public static boolean active() { return !ADDRESS.isBlank(); }
     public static void record(int entity,boolean changed) {
@@ -42,7 +47,7 @@ public final class MultiplayerHarness {
         if(!active())return;
         ticks++;
         try {
-            if(!done&&(System.nanoTime()-START>240_000_000_000L||mc.screen instanceof DisconnectedScreen)) {
+            if(!done&&(System.nanoTime()-START>240_000_000_000L*TIMEOUT_SCALE||mc.screen instanceof DisconnectedScreen)) {
                 check(mc.screen instanceof DisconnectedScreen?"no_disconnect":"timeout",false);done=true;
             }
             if(done) {
@@ -121,7 +126,7 @@ public final class MultiplayerHarness {
             waveStopped=true;check("remote_wave_stop",true);LOG.info("EMOTE_MP stopped player=A id={}",WAVE);
         }
         if(danceSeen&&!danceStopped&&(p==null||p.stopping())) {
-            danceStopped=true;check("remote_move_stop",ticks-danceAt>=80&&ticks-danceAt<150);LOG.info("EMOTE_MP stopped player=A id={}",DANCE);
+            danceStopped=true;check("remote_move_stop",ticks-danceAt>=80&&ticks-danceAt<150*TIMEOUT_SCALE);LOG.info("EMOTE_MP stopped player=A id={}",DANCE);
             check("wave_rendered",waveRendered);check("bigdance_rendered",danceRendered);
             check("wave_screenshot",waveShot!=null&&Files.isRegularFile(waveShot));
             check("bigdance_screenshot",danceShot!=null&&Files.isRegularFile(danceShot));

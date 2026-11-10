@@ -160,6 +160,22 @@ def animation_file(path):
     return path.suffix == ".json" and not path.name.endswith((".geo.json", ".quarkos.json"))
 
 
+def discover_animation(path, root):
+    relative = path.relative_to(root)
+    if any(part.startswith("_") for part in relative.parts[:-1]):
+        return False
+    if len(relative.parts) == 1:
+        return animation_file(path)
+    return path.name == path.parent.name + ".animation.json"
+
+
+def companions(path):
+    if path.name != path.parent.name + ".animation.json":
+        return []
+    return [p for suffix in ("_enter", "_loop")
+            if (p := path.with_name(path.parent.name + suffix + ".animation.json")).is_file()]
+
+
 def stem(path):
     return path.name.removesuffix(".json").removesuffix(".animation")
 
@@ -190,6 +206,18 @@ def validate_geometry(path):
                 require(all(n >= 0 for n in cube["size"]), "negative cube size")
                 require(isinstance(cube["uv"], list) and len(cube["uv"]) == 2
                         and all(type(n) is int for n in cube["uv"]), "cube.uv: expected box UV [u, v]")
+        parents={b["name"]:b.get("parent") for b in geo["bones"]}
+        for bone in parents:
+            visited=set()
+            cursor=bone
+            while cursor is not None:
+                require(cursor not in visited, "geometry parent cycle")
+                visited.add(cursor)
+                parent=parents[cursor]
+                if parent is None or parent in BONES - {"prop", "table"}:
+                    break
+                require(isinstance(parent,str) and parent in parents, "missing geometry parent " + str(parent))
+                cursor=parent
     png = path.with_name(path.name.removesuffix(".geo.json") + ".png")
     require(png.is_file(), f"missing prop texture {png}")
     header = png.read_bytes()[:24]
@@ -206,13 +234,19 @@ def validate(path):
     side = read_json(sidecar) if sidecar.exists() else None
     prop_bones = set()
     for geo in path.parent.glob("*.geo.json"):
-        prop_bones.update(validate_geometry(geo))
+        if geo.with_name(geo.name.removesuffix(".geo.json")+".png").is_file():
+            prop_bones.update(validate_geometry(geo))
     data = read_json(path)
     result = validate_data(data, path.name, sidecar=side, prop_bones=prop_bones)
     animation = next(iter(data["animations"].values()))
     extras = set(animation["bones"]) - (BONES - {"prop", "table"})
     legacy = animation.get("quarkos", data.get("quarkos", side or {})).get("prop")
     require(extras <= prop_bones or bool(legacy), f"unbound prop bones: {sorted(extras - prop_bones)}")
+    for chain in companions(path):
+        clip = read_json(chain)
+        validate_data(clip, chain.name, prop_bones=prop_bones)
+        mode = next(iter(clip["animations"].values())).get("loop", False)
+        require(mode == (False if "_enter.animation.json" in chain.name else True), "invalid chain loop mode")
     return result
 
 
@@ -265,7 +299,7 @@ def main(argv=None):
     errors = []
     for path in args.paths or [BUILTINS]:
         if path.is_dir():
-            found = {p for p in path.rglob("*.json") if animation_file(p)}
+            found = {p for p in path.rglob("*.json") if discover_animation(p, path)}
             if not found:
                 errors.append(f"{path}: no JSON animation files found")
             files.update(found)

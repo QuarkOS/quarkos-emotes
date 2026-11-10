@@ -1,1 +1,1 @@
-32 expressive Minecraft emotes with editable Blockbench animations. Fabric and Forge support in development.
+42 expressive Minecraft emotes with editable Blockbench animations. Fabric and Forge support in development.

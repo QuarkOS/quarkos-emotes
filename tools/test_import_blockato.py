@@ -102,7 +102,7 @@ class ImportTests(unittest.TestCase):
                 animation = next(iter(data["animations"].values()))
                 animation["bones"][alias] = {"position": [0, 0, -13]}
                 original = deepcopy(data)
-                self.write(self.source / "nested" / "table.json", data)
+                self.write(self.source / "nested" / "nested.animation.json", data)
                 entry = self.plan()[0]
                 self.assertEqual(entry.status, "replaced")
                 self.assertEqual(entry.metadata, metadata)
@@ -179,7 +179,7 @@ class ImportTests(unittest.TestCase):
     def test_apply_backup_is_exact_and_output_validates(self):
         target = self.output / "wave.animation.json"
         before = target.read_bytes()
-        self.write(self.source / "wave" / "export.json", export(loop=True))
+        self.write(self.source / "wave" / "wave.animation.json", export(loop=True))
         code, report = self.run_cli("--apply")
         self.assertEqual(code, 0, report)
         backups = list(self.backups.glob("*/*.animation.json"))
@@ -188,7 +188,7 @@ class ImportTests(unittest.TestCase):
         self.assertFalse(target.exists())
         target = self.output / "wave/wave.animation.json"
         self.assertNotEqual(target.read_bytes(), before)
-        self.assertEqual(target.read_bytes(), (self.source / "wave/export.json").read_bytes())
+        self.assertEqual(target.read_bytes(), (self.source / "wave/wave.animation.json").read_bytes())
         self.assertEqual(validator.validate(target)[2], "true")
 
     def test_distinct_prop_names_do_not_collide_and_duplicate_targets_skip(self):
@@ -287,39 +287,29 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(side.read_bytes(), exact_side)
         self.assertEqual((folder / "new_move.animation.json").read_bytes(), source.read_bytes())
 
-    def test_sit_once_is_sit_full_and_later_hold_keeps_sit_id(self):
-        source = self.write(self.source / "sit/sit.animation.json", export("animation.emote.sit", False))
+    def test_strict_folder_rule_archives_and_chain_bytes(self):
+        canonical = self.write(self.source / "sit/sit.animation.json", export("animation.emote.sit", "hold_on_last_frame"))
+        for name in ("sit_v1", "sit_v2", "clipcheck", "random"):
+            self.write(self.source / f"sit/{name}.animation.json", export("animation.emote.sit"))
+        self.write(self.source / "_archive/sit/sit.animation.json", export("animation.emote.sit"))
+        self.write(self.source / "sit/_archive/old/old.animation.json", export("animation.emote.sit"))
+        loop = self.write(self.source / "sit/sit_loop.animation.json", export("animation.emote.sit_loop", True))
+        enter = self.write(self.source / "sit/sit_enter.animation.json", export("animation.emote.sit_enter", False))
+        (self.source / "sit/broken_clipcheck.json").write_text("invalid ignored")
         code, report = self.run_cli("--apply")
         self.assertEqual(code, 0, report)
-        full = self.output / "sit_full/sit_full.animation.json"
-        self.assertEqual(full.read_bytes(), source.read_bytes())
-        self.assertFalse((self.output / "sit").exists())
-        self.assertEqual(validator.validate(full)[0], "quarkos_emotes:sit_full")
-        source = self.write(source, export("animation.emote.sit", "hold_on_last_frame"))
+        folder = self.output / "sit"
+        self.assertEqual({p.name for p in folder.iterdir()}, {"sit.animation.json", "sit_loop.animation.json", "sit_enter.animation.json", "sit.quarkos.json"})
+        for source in (canonical, loop, enter):
+            self.assertEqual((folder / source.name).read_bytes(), source.read_bytes())
         code, report = self.run_cli("--apply")
         self.assertEqual(code, 0, report)
-        hold = self.output / "sit/sit.animation.json"
-        self.assertEqual(hold.read_bytes(), source.read_bytes())
-        self.assertEqual(validator.validate(hold)[:3], ("quarkos_emotes:sit", 2.0, "hold_on_last_frame"))
-        self.assertTrue(full.exists())
-
-    def test_renamed_sit_delivery_wins_over_equivalent_old_copy(self):
-        self.write(self.source / "sit/sit.animation.json", export("animation.emote.sit", False))
-        canonical = self.write(self.source / "sit_full/sit_full.animation.json",
-                               export("animation.emote.sit_full", False))
-        self.write(self.source / "sit/sit_v2.animation.json", export("animation.emote.sit", "hold_on_last_frame"))
+        self.assertIn("unchanged", report)
+        enter.unlink()
         code, report = self.run_cli("--apply")
         self.assertEqual(code, 0, report)
-        self.assertIn("legacy sit copy superseded", report)
-        self.assertEqual((self.output / "sit_full/sit_full.animation.json").read_bytes(), canonical.read_bytes())
-        self.assertTrue((self.output / "sit/sit.animation.json").exists())
-        # A changed duplicate must still fail rather than silently choose one.
-        data = export("animation.emote.sit", False)
-        data["animations"]["animation.emote.sit"]["animation_length"] = 3
-        self.write(self.source / "sit/sit.animation.json", data)
-        code, report = self.run_cli("--apply")
-        self.assertEqual(code, 1, report)
-        self.assertIn("multiple source animations", report)
+        self.assertFalse((folder / enter.name).exists())
+        self.assertTrue(list(self.backups.glob("*/sit/sit_enter.animation.json")))
 
     def test_removed_prop_pair_is_backed_up_and_removed(self):
         import shutil
@@ -337,29 +327,6 @@ class ImportTests(unittest.TestCase):
         self.assertFalse((folder / "table_prop.geo.json").exists())
         self.assertFalse((folder / "table_prop.png").exists())
         self.assertEqual(next(self.backups.glob("*/tableflip/table_prop.geo.json")).read_bytes(), old_geo)
-
-    def test_sit_canonical_hold_wins_and_old_canonical_uses_v2(self):
-        canonical = self.source / "sit/sit.animation.json"
-        v2 = self.write(self.source / "sit/sit_v2.animation.json", export("animation.emote.sit", "hold_on_last_frame"))
-        self.write(canonical, export("animation.emote.sit", False))
-        self.write(self.source / "sit/sit_v1.animation.json", export("animation.emote.sit", False))
-        self.write(self.source / "sit_full/sit_full.animation.json", export("animation.emote.sit_full", False))
-        code, report = self.run_cli("--apply")
-        self.assertEqual(code, 0, report)
-        target = self.output / "sit/sit.animation.json"
-        self.assertEqual(target.read_bytes(), v2.read_bytes())
-        # The renamed canonical hold deliberately differs: choose it by mode,
-        # and do not reject the archived v2 as a colliding duplicate.
-        data = export("animation.emote.sit", "hold_on_last_frame")
-        data["animations"]["animation.emote.sit"]["animation_length"] = 3
-        self.write(canonical, data)
-        code, report = self.run_cli("--apply")
-        self.assertEqual(code, 0, report)
-        self.assertEqual(target.read_bytes(), canonical.read_bytes())
-        v2.unlink()
-        code, report = self.run_cli("--apply")
-        self.assertEqual(code, 0, report)
-        self.assertIn("unchanged", report)
 
     def test_include_limits_intake_when_later_batches_are_present(self):
         self.write(self.source / "backflip/backflip.animation.json", export("animation.emote.backflip"))

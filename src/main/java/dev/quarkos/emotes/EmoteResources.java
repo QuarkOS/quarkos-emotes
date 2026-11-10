@@ -41,7 +41,10 @@ public final class EmoteResources implements ResourceManagerReloadListener {
                 try(Reader r=geo.getValue().openAsReader()) { props.addAll(PropGeometry.parse(r,texture)); }
                 catch(Exception e) {warn(gp,e);}
             }
-            read(reader,s.id().getNamespace(),path,metadata,props,emotes);
+            read(reader,s.id().getNamespace(),path,metadata,props,emotes,file->{
+                var resource=manager.getResource(Identifier.fromNamespaceAndPath(s.id().getNamespace(),file));
+                return resource.isPresent()?resource.get().openAsReader():null;
+            });
         } catch(Exception e) {warn(s.id().toString(),e);}
         Path custom=Minecraft.getInstance().gameDirectory.toPath().resolve("config/quarkos_emotes/emotes");
         try {
@@ -54,13 +57,16 @@ public final class EmoteResources implements ResourceManagerReloadListener {
                 try(var files=Files.list(p.getParent())) {
                     for(Path geo:files.filter(f->f.getFileName().toString().endsWith(".geo.json")).sorted().toList()) {
                         Path png=geo.resolveSibling(geo.getFileName().toString().replaceFirst("\\.geo\\.json$",".png"));
+                        if(!Files.isRegularFile(png))continue;
                         try(Reader r=Files.newBufferedReader(geo)) {
                             String texture=GeometryProps.localTexture(custom.relativize(png).toString(),png);
                             props.addAll(PropGeometry.parse(r,texture));
                         } catch(Exception e) {warn(geo.toString(),e);}
                     }
                 }
-                read(reader,"custom",p.getFileName().toString(),metadata,props,emotes);
+                read(reader,"custom",custom.relativize(p).toString().replace('\\','/'),metadata,props,emotes,file->{
+                    Path chain=custom.resolve(file);return Files.isRegularFile(chain)?Files.newBufferedReader(chain):null;
+                });
             } catch(Exception e) {warn(p.toString(),e);}
         } catch(IOException e) {warn(custom.toString(),e);}
         REGISTRY.replace(emotes);
@@ -68,9 +74,13 @@ public final class EmoteResources implements ResourceManagerReloadListener {
         dev.quarkos.emotes.render.PropAttachment.invalidate();
         LoggerFactory.getLogger("quarkos_emotes").info("Loaded {} emotes",REGISTRY.all().size());
     }
-    private static void read(Reader r,String namespace,String source,JsonObject metadata,List<PropGeometry> props,List<Emote> target) {
+    private static void read(Reader r,String namespace,String source,JsonObject metadata,List<PropGeometry> props,List<Emote> target,EmoteFiles.Readers companions) {
         var result=new EmoteParser().parse(r,namespace,source,metadata);
-        result.emotes().forEach(e->target.add(e.withProps(props)));
+        result.emotes().forEach(e->{
+            try { e=EmoteFiles.chained(e,source,companions); }
+            catch(IOException invalid) {warn(source,invalid);}
+            target.add(e.withProps(props));
+        });
         result.warnings().forEach(w->LoggerFactory.getLogger("quarkos_emotes").warn("{}: {}",source,w));
         result.errors().forEach(e->LoggerFactory.getLogger("quarkos_emotes").error("{}: {}",source,e));
     }

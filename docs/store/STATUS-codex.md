@@ -226,3 +226,15 @@ metadata. Documented one-command import, loop seam interpolation and .2-second
 exit blending. The root STATUS-codex.md contains E6 implementation/validation
 results and parent-run build, screenshot and multiplayer follow-ups. No store
 publication or external messages were sent.
+
+## E9 — 2026-11-10
+
+Store drafts and changelog now list all 42 built-ins (41 Blockato emotes plus
+stretch), including the ten batch-4 additions, two companion chain clips and
+arrived sword prop. Strict discovery, chaining and prop parenting are documented
+in ../ANIMATION_FORMAT.md. Full implementation/validation and parent-only live
+proof requirements are in ../../STATUS-codex.md under E9. This task produced no
+Gradle artifacts, Minecraft screenshots or multiplayer run. Offline checks:
+61 Java tests, 35 Python tests, four-target javac, 42 valid emotes / 0 errors,
+47 runtime payloads matching delivered bytes/MD5. Parent must review full
+107-shot / 77-check or quick 46-shot / 50-check evidence before publication.

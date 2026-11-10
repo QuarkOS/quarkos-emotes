@@ -3,6 +3,8 @@
 set -euo pipefail
 loader=${1:?loader required}; version=${2:?version required}; destination=${3:?output directory required}
 mode=${4:-sync}; port=${5:-25599}
+export MP_TIMEOUT_SCALE=${MP_TIMEOUT_SCALE:-3}
+[[ $MP_TIMEOUT_SCALE =~ ^[1-9][0-9]*$ ]] || { echo 'MP_TIMEOUT_SCALE must be a positive integer' >&2; exit 2; }
 [[ $loader == fabric || $loader == forge ]] || { echo 'loader must be fabric or forge' >&2; exit 2; }
 [[ $version == 1.21.1 || $version == 1.21.11 ]] || { echo 'unsupported version' >&2; exit 2; }
 [[ $mode == sync || $mode == vanilla ]] || { echo 'mode must be sync or vanilla' >&2; exit 2; }
@@ -20,7 +22,7 @@ pids=(); server_pid=; viewer_pid=; actor_pid=
 stop_server() {
     if [[ -n $server_pid ]]; then
         printf 'stop\n' >&3 || true
-        for ((i=0;i<20;i++)); do kill -0 "$server_pid" 2>/dev/null || break; sleep 1; done
+        for ((i=0;i<20*MP_TIMEOUT_SCALE;i++)); do kill -0 "$server_pid" 2>/dev/null || break; sleep 1; done
         if kill -0 "$server_pid" 2>/dev/null; then
             kill -TERM -- "-$server_pid" 2>/dev/null || true
             sleep 1
@@ -57,7 +59,7 @@ p.write_text('\n'.join(lines+[f'{k}:{v}' for k,v in settings.items()])+'\n')
 PY
 done
 await_log() {
-    local log=$1 pattern=$2 pid=$3 limit=$4
+    local log=$1 pattern=$2 pid=$3 limit=$(($4 * MP_TIMEOUT_SCALE))
     for ((i=0;i<limit;i++)); do
         if [[ -f $log ]] && rg -q "$pattern" "$log"; then return; fi
         if ! kill -0 "$pid" 2>/dev/null; then tail -60 "$log"; return 1; fi
@@ -69,7 +71,7 @@ mkfifo "$out/server.stdin"
 exec 3<>"$out/server.stdin"
 disabled=false; [[ $mode != vanilla ]] || disabled=true
 # Separate project caches avoid Gradle's whole-build lock while the three JavaExec tasks run.
-setsid timeout 900 ./gradlew "${common[@]}" --project-cache-dir "$out/cache-server" "$prefix:runServer" \
+setsid timeout "$((900 * MP_TIMEOUT_SCALE))" ./gradlew "${common[@]}" --project-cache-dir "$out/cache-server" "$prefix:runServer" \
     "-PrunDir=$out/run-server" "-Pport=$port" -PserverHarness=true "-PdisableServer=$disabled" \
     <"$out/server.stdin" >"$out/server.log" 2>&1 &
 server_pid=$!; pids+=("$server_pid")
@@ -81,7 +83,7 @@ start_client() {
     local reuse=(-x "$prefix:compileJava" -x "$prefix:compileProofJava"
                  -x "$prefix:processResources" -x "$prefix:processProofResources"
                  -x "$prefix:stonecutterGenerate")
-    setsid timeout 480 xvfb-run -a -s '-screen 0 960x540x24' ./gradlew "${common[@]}" \
+    setsid timeout "$((480 * MP_TIMEOUT_SCALE))" xvfb-run -a -s '-screen 0 960x540x24' ./gradlew "${common[@]}" \
         --project-cache-dir "$out/cache-$role" "${reuse[@]}" "$prefix:runClient" "-PrunDir=$out/run-$role" \
         "-PjoinServer=127.0.0.1:$port" "-Pusername=$username" "-Prole=$role" "-Pvanilla=$vanilla" \
         "-Pshots=$out/shots-$role" -PguiScale=2 >"$out/$role.log" 2>&1 &

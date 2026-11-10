@@ -52,7 +52,8 @@ public final class EmoteWheelScreen extends Screen {
         var order=List.of("wave","thinking","clap","tableflip","facepalm","groove","bigdance","cheer",
                 "yes","no","cry","rage","victory","heart_hands","wave_big","slow_clap",
                 "bow","salute","laugh","shrug","point","dab","sit","sit_full",
-                "backflip","spin","worm","floss","zombie_walk","sleep","tpose","stretch");
+                "backflip","spin","worm","floss","zombie_walk","sleep","tpose","stretch",
+                "jump_hype","fishing_cast","sword_salute","guitar","drums","default_dance","kneel","lay_down","pushups","meditate");
         var list=EmoteResources.REGISTRY.all().stream().sorted(Comparator.<Emote>comparingInt(e->{int i=order.indexOf(e.id().replace("quarkos_emotes:",""));return i<0?Integer.MAX_VALUE:i;}).thenComparing(Emote::id)).toList();
         if(favorites) list=EmoteConfig.get().favorites.stream().map(EmoteResources.REGISTRY::get).filter(Objects::nonNull).toList();
         return list.stream().filter(e->category==0||e.category().equals(CATEGORIES.get(category)))

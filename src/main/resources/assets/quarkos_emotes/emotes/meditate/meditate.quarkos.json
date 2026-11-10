@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:meditate",
+  "name": "emote.quarkos_emotes.meditate",
+  "icon": "minecraft:amethyst_shard",
+  "category": "pose",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

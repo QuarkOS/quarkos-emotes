@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:kneel",
+  "name": "emote.quarkos_emotes.kneel",
+  "icon": "minecraft:leather_boots",
+  "category": "pose",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

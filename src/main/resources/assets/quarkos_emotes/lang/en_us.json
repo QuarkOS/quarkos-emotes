@@ -78,5 +78,15 @@
   "category.quarkos_emotes.dance": "Dances",
   "category.quarkos_emotes.pose": "Poses",
   "category.quarkos_emotes.fun": "Fun",
-  "tooltip.quarkos_emotes.category": "Cycle emote categories. Search and favorites also apply."
+  "tooltip.quarkos_emotes.category": "Cycle emote categories. Search and favorites also apply.",
+  "emote.quarkos_emotes.jump_hype": "Jump Hype",
+  "emote.quarkos_emotes.fishing_cast": "Fishing Cast",
+  "emote.quarkos_emotes.sword_salute": "Sword Salute",
+  "emote.quarkos_emotes.guitar": "Guitar",
+  "emote.quarkos_emotes.drums": "Drums",
+  "emote.quarkos_emotes.pushups": "Pushups",
+  "emote.quarkos_emotes.default_dance": "Default Dance",
+  "emote.quarkos_emotes.kneel": "Kneel",
+  "emote.quarkos_emotes.lay_down": "Lay Down",
+  "emote.quarkos_emotes.meditate": "Meditate"
 }

@@ -2,9 +2,9 @@
 
 ## 1.0.0 — release preparation
 
-- Ship exactly **32 emotes** (16 retained + 15 new + sit):
-  `wave`, `thinking`, `clap`, `tableflip`, `facepalm`, `groove`, `bigdance`, `cheer`, `bow`, `salute`, `laugh`, `shrug`, `point`, `dab`, `sit_full`, `stretch`, `yes`, `no`, `cry`, `rage`, `victory`, `heart_hands`, `wave_big`, `backflip`, `spin`, `worm`, `floss`, `tpose`, `zombie_walk`, `slow_clap`, `sleep`, `sit`.
-- Ship 31 byte-identical Blockbench exports by **Blockato** across batches 1–3;
+- Ship exactly **42 emotes** (32 retained + 10 batch-4 additions):
+  `wave`, `thinking`, `clap`, `tableflip`, `facepalm`, `groove`, `bigdance`, `cheer`, `bow`, `salute`, `laugh`, `shrug`, `point`, `dab`, `sit_full`, `stretch`, `yes`, `no`, `cry`, `rage`, `victory`, `heart_hands`, `wave_big`, `backflip`, `spin`, `worm`, `floss`, `tpose`, `zombie_walk`, `slow_clap`, `sleep`, `sit`, `jump_hype`, `fishing_cast`, `sword_salute`, `guitar`, `drums`, `pushups`, `default_dance`, `kneel`, `lay_down`, `meditate`.
+- Ship 41 byte-identical Blockbench exports by **Blockato** across batches 1–4;
   stretch is the remaining original. Re-copy the renamed sit_full delivery.
   Sit now sits down and holds; sleep lies down and holds until cancel/movement.
 - Preserve raw unwrapped Euler components through parsing, every interpolation
@@ -15,16 +15,27 @@
 - Capture front/¾ shots for all emotes, Steve/Alex variants for backflip/worm/floss,
   side views for backflip/worm, and spin near 90°/270°. Check rendered full turns,
   held sit/sleep, forced skin models and first-person sleep/camera restoration.
-- Add category filtering alongside search, four wheel pages and sensible favorites.
-- Add importer `--include` for a batch pinned catalog. Prefer hold-mode canonical
-  sit over sit_v2; otherwise use sit_v2 and keep the old one-shot as sit_full.
-- Wrap Catmull–Rom neighbours across all four looping emote seams like
+- Add category filtering alongside search, six wheel pages and sensible favorites.
+- Enforce the same strict folder rule for built-ins, packs, config and importer:
+  only the canonical folder animation, optional enter/loop files, matching prop
+  pairs and sidecar. Ignore `_archive` and all extra proof/version files.
+- Chain enter → main and hold → loop without blending at the handoff; keep one
+  network ID and resume segment/phase from total elapsed time for late viewers.
+- Follow explicit player-bone prop parents using the flat limb's final animated
+  pivot, rotation, position and scale before the prop's own channels.
+- Add `-Pquick=true` (42 front views + four UI shots) and chain switch logs.
+  Full harness: 107 shots / 77 checks; quick: 46 shots / 50 checks.
+- Disable the proof server watchdog with `max-tick-time=-1`; proof timeouts
+  default to 3× and accept `MP_TIMEOUT_SCALE` for heavily loaded boxes.
+- Set Steve arm pivots for lay_down/pushups; kneel/meditate retain model pivots.
+- Keep importer `--include` for a catalog pinned to the requested delivery.
+- Wrap Catmull–Rom neighbours across all eight looping emote seams like
   Blockbench 5.2.2. Keep clamped endpoints for non-looping clips.
 - Hold `hold_on_last_frame` animations until cancellation; freeze cancelled
   poses and blend back to vanilla over 0.2 seconds. Natural one-shot endings
   use the same fade. Existing play/stop broadcasts also cover held emotes.
 - Refresh names, metadata, default wheel/favorites and representative harness
-  poses for batch 3, including seated sit_full and mid-beat dances.
+  poses for batch 4, including seated sit_full and mid-beat dances.
 - Import new/changed animator folders with `python3 tools/import_blockato.py
   --apply`, keeping sidecars, creating defaults and validating runtime assets.
   Skip unchanged folders and back up replacements, including removed props.

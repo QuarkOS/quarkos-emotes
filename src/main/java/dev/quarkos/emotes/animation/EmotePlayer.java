@@ -13,7 +13,7 @@ public final class EmotePlayer {
     public void seek(double seconds) {
         if(!Double.isFinite(seconds)||seconds<0)throw new IllegalArgumentException("Invalid elapsed time");
         elapsed=seconds;previous=seconds;frozen=Double.NaN;stopTime=Double.NaN;
-        if(emote.loop()==Emote.Loop.ONCE&&elapsed>=emote.length()) { frozen=emote.length();stopTime=emote.length(); }
+        if(elapsed>=emote.totalLength()) { frozen=emote.totalLength();stopTime=emote.totalLength(); }
     }
     /** Resource reload replaces definitions without replaying already emitted sound events. */
     public EmotePlayer rebind(Emote definition) {
@@ -21,23 +21,25 @@ public final class EmotePlayer {
     }
     public Emote emote() { return emote; }
     public void freeze(double seconds) { frozen=seconds; elapsed=Math.max(BLEND_SECONDS,seconds); }
-    public void stop() { if(Double.isNaN(stopTime)) { frozen=time(0); stopTime=elapsed; } }
+    public void stop() { if(Double.isNaN(stopTime)) { frozen=timeline(0); stopTime=elapsed; } }
     public boolean stopping() { return !Double.isNaN(stopTime); }
     public void tick() {
         elapsed+=.05;
-        if(Double.isNaN(frozen)&&emote.loop()==Emote.Loop.ONCE&&elapsed>=emote.length()) {
-            frozen=emote.length(); stopTime=emote.length();
+        if(Double.isNaN(frozen)&&elapsed>=emote.totalLength()) {
+            frozen=emote.totalLength(); stopTime=emote.totalLength();
         }
     }
     public State state() {
         if(finished()) return State.DONE;
         if(stopping()) return State.BLENDING_OUT;
-        return emote.loop()==Emote.Loop.HOLD && time(0)>=emote.length() ? State.HOLDING : State.PLAYING;
+        return segment(0).animation().loop()==Emote.Loop.HOLD && time(0)>=emote.length() ? State.HOLDING : State.PLAYING;
     }
     public boolean finished() { return stopping() && elapsed-stopTime>=BLEND_OUT_SECONDS-1e-9; }
     /** Props disappear immediately on stop; only the player pose blends back to vanilla. */
     public boolean propsVisible(double partialTicks) { return elapsed+partialTicks/20<endTime() && weight(partialTicks)>0; }
-    public double time(double partialTicks) { return emote.wrap(Double.isNaN(frozen)?elapsed+partialTicks/20:frozen); }
+    private double timeline(double partialTicks) { return Double.isNaN(frozen)?elapsed+partialTicks/20:frozen; }
+    public Emote.Segment segment(double partialTicks) { return emote.segment(timeline(partialTicks)); }
+    public double time(double partialTicks) { return segment(partialTicks).time(); }
     public double weight(double partialTicks) {
         double now=elapsed+partialTicks/20,end=endTime();
         // Cancel during entry from the current weight; entry must not keep
@@ -46,25 +48,35 @@ public final class EmotePlayer {
     }
     private double endTime() {
         if(stopping()) return stopTime;
-        return Double.isNaN(frozen)&&emote.loop()==Emote.Loop.ONCE ? emote.length() : Double.POSITIVE_INFINITY;
+        return Double.isNaN(frozen) ? emote.totalLength() : Double.POSITIVE_INFINITY;
     }
     public Map<String,Emote.Pose> pose(double partialTicks) {
-        Map<String,Emote.Pose> pose=new LinkedHashMap<>(); double t=time(partialTicks);
-        emote.bones().forEach((name,bone)->pose.put(name,bone.sample(t,emote.easing(),emote.loop()==Emote.Loop.LOOP))); return pose;
+        Map<String,Emote.Pose> pose=new LinkedHashMap<>(); var segment=segment(partialTicks);var clip=segment.animation();
+        clip.bones().forEach((name,bone)->pose.put(name,bone.sample(segment.time(),clip.easing(),clip.loop()==Emote.Loop.LOOP))); return pose;
     }
     public List<Emote.Sound> sounds() {
         double now=Double.isNaN(frozen)?elapsed:frozen;
         List<Emote.Sound> due=new ArrayList<>();
         if(!stopping() && Double.isNaN(frozen)) {
-            for(var sound:emote.sounds()) {
-                if(emote.loop()==Emote.Loop.LOOP) {
-                    long cycle=(long)Math.floor(now/emote.length());
-                    for(long c=Math.max(0,cycle-1);c<=cycle;c++) {
-                        double t=c*emote.length()+sound.time(); if(t>previous&&t<=now) due.add(sound);
-                    }
-                } else if(sound.time()>previous&&sound.time()<=now) due.add(sound);
-            }
+            if(emote.enter()!=null) collectSounds(emote.enter(),0,false,now,due);
+            collectSounds(emote,emote.entryLength(),emote.loop()==Emote.Loop.LOOP,now,due);
+            if(emote.followLoop()!=null) collectSounds(emote.followLoop(),emote.entryLength()+emote.length(),true,now,due);
         }
         previous=now; return due;
     }
+    private void collectSounds(Emote clip,double start,boolean repeat,double now,List<Emote.Sound> due) {
+        // Tick sums may land a few ULPs below an authored timestamp. Use the
+        // same tolerance for both bounds so a boundary cue fires once on time.
+        double limit=now+1e-9,after=previous<0?previous:previous+1e-9;
+        if(limit<start)return;
+        for(var sound:clip.sounds()) {
+            long first=repeat?Math.max(0,(long)Math.floor((after-start-sound.time())/clip.length())+1):0;
+            long last=repeat?(long)Math.floor((limit-start-sound.time())/clip.length()):0;
+            for(long c=first;c<=last;c++) {
+                double at=start+c*clip.length()+sound.time();
+                if(at>after && at<=limit)due.add(sound);
+            }
+        }
+    }
+
 }
