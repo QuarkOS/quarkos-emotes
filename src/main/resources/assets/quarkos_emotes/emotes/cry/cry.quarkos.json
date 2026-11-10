@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:cry",
+  "name": "emote.quarkos_emotes.cry",
+  "icon": "minecraft:ghast_tear",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

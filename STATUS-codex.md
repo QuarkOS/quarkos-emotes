@@ -505,3 +505,101 @@ Parent TODO / release gates:
    rebinding conflicts, Steve/Alex, armor/capes/items and first-person restoration.
 5. Supply verified release contact/source/issues URLs if desired, review/stage
    and commit the working tree. No git write or commit was attempted.
+
+## 2026-11-10 — E8, animator batch 3 / held sit / Euler turns / Alex pivot
+
+Completed in the main working tree; no Git writes or Gradle invocations.
+
+- Read `/home/box/blockato/emotes/NOTES_v3.md` and `md5_delivered.txt`.
+  Imported the 15 requested batch-3 emotes and held sit via the importer, and
+  re-copied canonical sit_full (now `animation.emote.sit_full`). Kept stretch.
+  Exactly **32 built-ins**: wave, thinking, clap, tableflip, facepalm, groove,
+  bigdance, cheer, bow, salute, laugh, shrug, point, dab, sit_full, stretch,
+  yes, no, cry, rage, victory, heart_hands, wave_big, backflip, spin, worm,
+  floss, tpose, zombie_walk, slow_clap, sleep, sit. Four loops (groove,
+  bigdance, floss, zombie_walk), two holds (sit, sleep), 26 one-shots.
+- The live delivery has advanced since the request: canonical
+  `sit/sit.animation.json` is now already hold-mode and byte-identical to
+  sit_v2; the old one-shot is archived as sit_v1. The importer accepts both
+  stages: prefer canonical sit ONLY if hold-mode, otherwise v2. Equivalent
+  archived one-shots defer to canonical sit_full. Fixture tests cover the old
+  canonical, both holds coexisting with different bytes, and v2 removed.
+- Later deliveries are also present in the intake (12 names beyond E8). Added
+  `--include name1,name2,...` so the E8 command in README stays pinned at 32.
+  An initial broad apply imported those extra names; removed those additions
+  before completing E8. Final selected re-import: 0 replaced, 0 new,
+  **31 unchanged**, 14 skipped, 32 valid / 0 errors. Import replacement backups
+  from this run are in `/tmp/emotes-e8-import-backups/`, outside shipped files.
+- Verified the existing Euler path end to end: parser retains raw signed degree
+  vectors; Track interpolates per component (catmullrom/linear/step);
+  BedrockAxes converts without normalization; PoseMath entry/exit blends
+  components; EmotePose writes ModelPart Euler fields. No shortest path or
+  quaternion interpolation. Shipped tests check backflip X=-180 at .8 s,
+  an interpolated value below -180, final -360; spin Y=270.5 at .9 s and
+  final +360; half-weight entry/exit still contain half of the full turn.
+- Added parsed/validated `arm_pivot` enum (`model` default / `steve`) and set
+  steve for backflip, spin, worm and sleep. Slim models are recognized by
+  their baked initial arm Y=2.5 (PartPose field in 1.21.1, accessor in 1.21.11).
+  Blend the temporary Java-space Y shift of -.5 px with playback weight,
+  starting from reset vanilla defaults each frame. Wide models stay at Y=2;
+  first-person arms use the same helper. Metadata survives withProps/reloads.
+  Tests cover weighted/default/wide behavior, both rig baselines yielding
+  the same authored orbit pivot, and restoration after cancellation.
+- Tests with the shipped sit/sleep run past their duration, assert HOLDING,
+  seated/lying final poses, freeze on stop and fade over exactly .2 seconds.
+  Existing movement/cancel dispatch remains the same; visual harness mode
+  deliberately bypasses movement cancellation so anchoring cannot cancel sleep.
+- Harness front + 3/4 shots cover all 32. Times: upside-down backflip .8,
+  worm mid-wave 1.25, floss mid-swing .25, spin ~270 at .9 plus ~90 at .63,
+  sit/sleep final held frames. Added backflip/worm side views and named
+  `emote-{backflip,worm,floss}-{steve,alex}.png` variants. HarnessSkinMixin
+  overrides only the local player's getSkin in visual harness mode, forcing
+  wide Steve/slim Alex texture AND dispatcher model. 1.21.1 uses client
+  PlayerSkin/Model and PNG texture; 1.21.11 uses entity PlayerSkin/PlayerModelType
+  and ClientAsset.ResourceTexture. Inactive outside visual proof mode.
+- Kept EMOTE_CHECK/EMOTE_SUMMARY. Render hook records actual body X/Y radians
+  and checks backflip X / spin Y exceed 150 degrees. Variant checks verify
+  forced model type; held shots check HOLDING at weight 1 after anchoring.
+  Added fp-sleep/fp-sleep-camera; both camera shots wait through actual client
+  ticks after cancellation and check camera restoration plus playback removal.
+  Full 32-emote run: **87 shots / 59 checks** (expected pass=59 fail=0).
+  First-person SHOW_ARMS keeps the normal camera and applies authored offsets;
+  THIRD_PERSON_CAMERA switches/restores via the existing lifecycle code. Visual
+  offsets do not move the entity/anchor, hitbox or ordinary gameplay camera.
+- Wheel retains eight sensible default favorites and four pages; added category
+  cycling that combines with search/favorites, grouped the 32-emote ordering,
+  and added English names/categories/tooltips. Updated README, format guide,
+  CREDITS (Blockato batches 1-3), changelog and store drafts with the 32 list,
+  sit rename rule, whole-body orbit and raw Euler contract.
+
+Validation:
+
+- `PYTHONDONTWRITEBYTECODE=1 python3 tools/check_compile.py`: runtime then proof
+  compile with cached jars, `javac --release 21 -proc:none`, for Fabric 1.21.1,
+  Fabric 1.21.11, Forge 52.1.20 and Forge 61.2.4. Both directions of Stonecutter
+  Identifier/ResourceLocation and AvatarRenderer/PlayerRenderer substring
+  replacements apply. No getPlayerRenderer-style identifier was introduced.
+  Only existing deprecated API / unchecked cast warnings remain.
+- `/tmp/e7_test.py` cached Gson/JUnit pure Java runner: **49/49 tests pass**
+  (43 previous + 6 batch-3 tests; previous catalog/seam tests updated).
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -v`:
+  **35/35 pass**. `tools/validate_emotes.py`: **32 valid, 0 errors**.
+- Compared **31/31 animator animations** byte-for-byte with delivery and MD5
+  against md5_delivered.txt (sit compared directly with sit_v2); table geometry
+  and PNG also match bytes and MD5. No animator animation contents edited.
+- `git diff --check` passes. Compile/test/import logs: `/tmp/e8-compile.txt`,
+  `/tmp/e8-java-tests.txt`, `/tmp/e8-python-tests.txt`,
+  `/tmp/e8-import-final.txt`, `/tmp/e8-validation.txt`.
+
+Parent follow-up (explicitly outside this run's execution scope):
+
+1. Run the four Gradle builds/tests and live harness. javac cannot validate
+   Mixin application/remapping or produce visual proof. Review all 87 images,
+   especially Steve/Alex shoulders, lying sleep, 360-turn poses, floor framing
+   and first-person arms; require EMOTE_SUMMARY pass=59 fail=0 for a full run.
+2. Focused visual selection: `-Ponly=backflip,worm,floss,spin,sit,sleep,fp-sleep,fp-sleep-camera`
+   with a fresh `-Pshots=...` directory. Individual variant names are supported.
+3. Check actual movement/cancel and camera modes during held sit/sleep, then
+   armor/capes and multiplayer on both loaders/versions. No live screenshots
+   or Gradle evidence were produced here. Stage/review/commit from the parent
+   with writable .git; this run leaves all requested changes in the workspace.

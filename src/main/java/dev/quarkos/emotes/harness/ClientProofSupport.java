@@ -6,6 +6,8 @@ public final class ClientProofSupport implements ClientProofHooks.Support {
     public void tick(Minecraft mc) {ClientHarness.tick(mc);MultiplayerHarness.tick(mc);}
     public void record(int entity,boolean changed) {ClientHarness.record(entity,changed);}
     public void recordHand(boolean changed) {ClientHarness.recordHand(changed);}
+    public void rotation(int entity,float x,float y) {ClientHarness.rotation(entity,x,y);}
+    public String model() {return ClientHarness.model;}
     public void capture() {ClientHarness.capture();}
     public float distance() {return ClientHarness.portraitDistance;}
     public float drop() {return ClientHarness.portraitDrop;}

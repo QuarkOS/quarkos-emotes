@@ -1,0 +1,9 @@
+{
+  "id": "quarkos_emotes:backflip",
+  "name": "emote.quarkos_emotes.backflip",
+  "icon": "minecraft:rabbit_foot",
+  "category": "fun",
+  "cancel_on_move": true,
+  "easing": "linear",
+  "arm_pivot": "steve"
+}

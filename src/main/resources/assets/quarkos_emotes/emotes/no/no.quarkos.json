@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:no",
+  "name": "emote.quarkos_emotes.no",
+  "icon": "minecraft:red_dye",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

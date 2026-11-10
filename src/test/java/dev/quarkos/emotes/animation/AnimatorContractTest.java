@@ -53,14 +53,14 @@ class AnimatorContractTest {
             assertTrue(e.cancelOnMove());
             try(var reader=resource(name+"/"+name+".animation.json")) {
                 var root=JsonParser.parseReader(reader).getAsJsonObject();assertFalse(root.has("quarkos"));
-                assertEquals(Set.of("animation.emote."+(name.equals("sit_full")?"sit":name)),root.getAsJsonObject("animations").keySet());
+                assertEquals(Set.of("animation.emote."+name),root.getAsJsonObject("animations").keySet());
             }
             for(var bone:e.bones().values())for(var track:List.of(bone.rotation(),bone.position(),bone.scale()))for(var key:track.keys())
                 assertEquals(Math.rint(key.time()*20),key.time()*20,1e-8,"20 fps grid");
         }
     }
     @Test void shippedDancesHaveNoPoseJumpAndContinuousVelocityAtWrap() throws IOException {
-        for(String name:List.of("groove","bigdance")) {
+        for(String name:List.of("groove","bigdance","floss","zombie_walk")) {
             var e=shipped(name);var p=new EmotePlayer(e);double h=1e-7;
             p.freeze(e.length()-h);var before=p.pose(0);
             p.freeze(e.length());var seam=p.pose(0);

@@ -55,9 +55,14 @@ public final class EmoteParser {
         if(sound.has("id")) sounds.add(new Emote.Sound(number(sound.get("at")),text(sound,"id",""),
                 (float)(sound.has("volume")?number(sound.get("volume")):1),(float)(sound.has("pitch")?number(sound.get("pitch")):1)));
         sounds.sort(Comparator.comparingDouble(Emote.Sound::time));
+        Emote.ArmPivot armPivot=switch(text(q,"arm_pivot","model")) {
+            case "model" -> Emote.ArmPivot.MODEL;
+            case "steve" -> Emote.ArmPivot.STEVE;
+            default -> throw new IllegalArgumentException("arm_pivot must be model or steve");
+        };
         return new Emote(id,text(q,"name",EmoteFiles.title(id.substring(id.indexOf(':')+1))),text(q,"icon","minecraft:note_block"),
                 text(q,"category","general"),length,looping,!q.has("cancel_on_move")||q.get("cancel_on_move").getAsBoolean(),
-                text(q,"easing","linear"),bones,sounds,q.has("prop")?q.getAsJsonObject("prop"):null);
+                text(q,"easing","linear"),bones,sounds,q.has("prop")?q.getAsJsonObject("prop"):null,List.of(),armPivot);
     }
     private Track track(JsonElement e,Vec3 fallback) {
         if(e==null) return new Track(List.of());

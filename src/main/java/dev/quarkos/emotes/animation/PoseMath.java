@@ -5,8 +5,18 @@ import java.util.*;
 /** Independent sibling transforms. The baseline is the model's current vanilla pose. */
 public final class PoseMath {
     private PoseMath() {}
+    /** Steve-authored orbit offsets require Y=2 instead of slim Y=2.5.
+     * Blend the temporary pivot with playback; callers start from reset model
+     * defaults each frame, so cancellation cannot leave a changed pivot behind. */
+    public static Emote.Pose armPivot(Emote.Pose base,boolean slim,Emote.ArmPivot pivot,double weight) {
+        if(!slim||pivot!=Emote.ArmPivot.STEVE) return base;
+        Vec3 p=base.position();
+        return new Emote.Pose(base.rotation(),new Vec3(p.x(),p.y()-.5*weight,p.z()),base.scale());
+    }
     public static Emote.Pose additive(Emote.Pose base,Emote.Pose animation,double weight) {
         if(animation==null) return base;
+        // Raw Euler components, including complete turns. Never normalize or
+        // convert this blend to quaternion slerp/shortest-path interpolation.
         Vec3 r=BedrockAxes.rotation(animation.rotation()),p=BedrockAxes.position(animation.position()),s=animation.scale();
         return new Emote.Pose(add(base.rotation(),r,weight),add(base.position(),p,weight),
                 new Vec3(base.scale().x()*(1+(s.x()-1)*weight),base.scale().y()*(1+(s.y()-1)*weight),base.scale().z()*(1+(s.z()-1)*weight)));

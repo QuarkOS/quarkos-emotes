@@ -2,19 +2,29 @@
 
 ## 1.0.0 — release preparation
 
-- Ship 16 emotes: wave, thinking, clap, tableflip, facepalm, groove, bigdance,
-  cheer, bow, salute, laugh, shrug, point, dab, sit_full and stretch.
-- Ship fifteen byte-identical Blockbench exports by **Blockato** across batches
-  1 and 2; stretch is the remaining original. Replace the earlier flat drafts,
-  including dance_groove/dance_elaborate. The delivered four-second one-shot
-  sit is named `sit_full`; `sit` stays free for a future hold animation.
-- Wrap Catmull–Rom neighbours across looping groove/bigdance seams like
+- Ship exactly **32 emotes** (16 retained + 15 new + sit):
+  `wave`, `thinking`, `clap`, `tableflip`, `facepalm`, `groove`, `bigdance`, `cheer`, `bow`, `salute`, `laugh`, `shrug`, `point`, `dab`, `sit_full`, `stretch`, `yes`, `no`, `cry`, `rage`, `victory`, `heart_hands`, `wave_big`, `backflip`, `spin`, `worm`, `floss`, `tpose`, `zombie_walk`, `slow_clap`, `sleep`, `sit`.
+- Ship 31 byte-identical Blockbench exports by **Blockato** across batches 1–3;
+  stretch is the remaining original. Re-copy the renamed sit_full delivery.
+  Sit now sits down and holds; sleep lies down and holds until cancel/movement.
+- Preserve raw unwrapped Euler components through parsing, every interpolation
+  mode, model application and entry/exit blends, including backflip −360° X
+  and spin +360° Y. Test the shipped midpoint and full-turn values.
+- Add sidecar `arm_pivot: steve` for backflip, spin, worm and sleep: blend slim
+  arm pivots from Java Y=2.5 to Y=2 during playback and restore on exit.
+- Capture front/¾ shots for all emotes, Steve/Alex variants for backflip/worm/floss,
+  side views for backflip/worm, and spin near 90°/270°. Check rendered full turns,
+  held sit/sleep, forced skin models and first-person sleep/camera restoration.
+- Add category filtering alongside search, four wheel pages and sensible favorites.
+- Add importer `--include` for a batch pinned catalog. Prefer hold-mode canonical
+  sit over sit_v2; otherwise use sit_v2 and keep the old one-shot as sit_full.
+- Wrap Catmull–Rom neighbours across all four looping emote seams like
   Blockbench 5.2.2. Keep clamped endpoints for non-looping clips.
 - Hold `hold_on_last_frame` animations until cancellation; freeze cancelled
   poses and blend back to vanilla over 0.2 seconds. Natural one-shot endings
   use the same fade. Existing play/stop broadcasts also cover held emotes.
 - Refresh names, metadata, default wheel/favorites and representative harness
-  poses for batch 2, including seated sit_full and mid-beat dances.
+  poses for batch 3, including seated sit_full and mid-beat dances.
 - Import new/changed animator folders with `python3 tools/import_blockato.py
   --apply`, keeping sidecars, creating defaults and validating runtime assets.
   Skip unchanged folders and back up replacements, including removed props.

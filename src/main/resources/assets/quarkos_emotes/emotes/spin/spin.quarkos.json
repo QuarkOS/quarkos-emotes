@@ -1,0 +1,9 @@
+{
+  "id": "quarkos_emotes:spin",
+  "name": "emote.quarkos_emotes.spin",
+  "icon": "minecraft:compass",
+  "category": "fun",
+  "cancel_on_move": true,
+  "easing": "linear",
+  "arm_pivot": "steve"
+}

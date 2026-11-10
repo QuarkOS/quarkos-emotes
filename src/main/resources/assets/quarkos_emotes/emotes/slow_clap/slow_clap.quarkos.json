@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:slow_clap",
+  "name": "emote.quarkos_emotes.slow_clap",
+  "icon": "minecraft:note_block",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

@@ -103,7 +103,9 @@ def channel(value, length, where):
 
 def metadata(value, inferred_id, length):
     obj(value, "quarkos", allowed={"id", "name", "icon", "category", "cancel_on_move",
-                                  "easing", "sound", "prop", "notes"})
+                                  "easing", "sound", "prop", "notes", "arm_pivot"})
+    if "arm_pivot" in value:
+        require(value["arm_pivot"] in ("model", "steve"), "quarkos.arm_pivot: expected model or steve")
     if "id" in value:
         resource(value["id"], "quarkos.id")
         require(value["id"] == inferred_id, "quarkos.id must match the emote id")

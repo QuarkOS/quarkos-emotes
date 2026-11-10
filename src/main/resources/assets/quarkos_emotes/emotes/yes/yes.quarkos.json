@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:yes",
+  "name": "emote.quarkos_emotes.yes",
+  "icon": "minecraft:lime_dye",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

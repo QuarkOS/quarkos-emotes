@@ -140,7 +140,7 @@ def load_catalog(output):
     return catalog
 
 
-def plan_import(source, output, allow_new=True, backup_root=BACKUPS):
+def plan_import(source, output, allow_new=True, backup_root=BACKUPS, include=None):
     catalog = load_catalog(output)
     entries = []
     ignored = 0
@@ -162,11 +162,26 @@ def plan_import(source, output, allow_new=True, backup_root=BACKUPS):
             entry = Entry(path, animation_name)
             describe(entry, animation)
             entries.append(entry)
+            # Delivery archives may coexist with the renamed hold export. Only
+            # a hold-mode canonical sit wins over sit_v2; never pick by filename
+            # alone (the original sit.animation.json was a four-second ONCE).
+            if path.parent.name == "sit" and path.name in {
+                    "sit.animation.json", "sit_v1.animation.json", "sit_v2.animation.json"}:
+                canonical = path.parent / "sit.animation.json"
+                try:
+                    canonical_animations = validator.read_json(canonical).get("animations", {})
+                    canonical_hold = (len(canonical_animations) == 1 and
+                                      next(iter(canonical_animations.values())).get("loop") == "hold_on_last_frame")
+                except (OSError, ValueError, TypeError, AttributeError):
+                    canonical_hold = False
+                if path.name == "sit_v2.animation.json" and canonical_hold:
+                    entry.reason = "hold sit_v2 superseded by hold sit/sit.animation.json"
+                    continue
             emote_id, reason = resolve_id(animation_name, path, source, catalog)
             # Batch 2's complete sit-down/stand-up clip must leave `sit` free
             # for the later hold export. Determine this from the loop mode so
             # a future hold-mode sit imports under its own filename as usual.
-            if (slug(leaf(path.name)) == "sit" and isinstance(animation, dict)
+            if (slug(leaf(path.name)) in {"sit", "sit_v1"} and isinstance(animation, dict)
                     and animation.get("loop") is False):
                 emote_id, reason = "sit_full", ""
                 canonical = source / "sit_full" / "sit_full.animation.json"
@@ -193,6 +208,9 @@ def plan_import(source, output, allow_new=True, backup_root=BACKUPS):
                     entry.error = True
                     continue
             entry.emote_id = emote_id
+            if include is not None and emote_id not in include:
+                entry.reason = "outside --include selection"
+                continue
             try:
                 normalized, warnings = normalize(document, animation_name, emote_id)
                 side = path.with_name(validator.stem(path) + ".quarkos.json")
@@ -318,6 +336,7 @@ def main(argv=None):
     mode.add_argument("--apply", action="store_true", help="write validated candidates and back up replacements")
     mode.add_argument("--dry-run", action="store_true", help="preview without writing anything (the default)")
     parser.add_argument("--new", action="store_true", help="compatibility flag; new names are now imported by default")
+    parser.add_argument("--include", help="comma-separated emote IDs/names to import from a growing delivery folder")
     parser.add_argument("--output-dir", type=Path, default=validator.BUILTINS)
     parser.add_argument("--backup-dir", type=Path, default=BACKUPS,
                         help="parent for timestamped replacement backups")
@@ -326,7 +345,8 @@ def main(argv=None):
         print(f"ERROR: source directory does not exist: {args.source}", file=sys.stderr)
         return 1
     try:
-        entries, ignored = plan_import(args.source, args.output_dir, True, args.backup_dir)
+        include = {name.removeprefix("quarkos_emotes:") for name in args.include.split(",")} if args.include else None
+        entries, ignored = plan_import(args.source, args.output_dir, True, args.backup_dir, include)
     except (OSError, ValueError, TypeError, OverflowError) as error:
         print(f"ERROR: cannot read native catalog: {error}", file=sys.stderr)
         return 1

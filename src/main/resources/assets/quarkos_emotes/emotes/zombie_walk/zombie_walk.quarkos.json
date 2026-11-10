@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:zombie_walk",
+  "name": "emote.quarkos_emotes.zombie_walk",
+  "icon": "minecraft:rotten_flesh",
+  "category": "dance",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

@@ -2,14 +2,15 @@
 
 **Project author and maintainer:** Emilio Schwaiger / QuarkOS.
 
-The fifteen built-in emotes **wave, thinking, tableflip, facepalm, clap,
-groove, bigdance, bow, salute, laugh, shrug, cheer, point, dab and sit_full**
-were authored in batches 1 and 2 by the Blockbench animator **Blockato** for
-**QuarkOS**. Their exported animation files, and the table's geometry and PNG
-texture, are shipped byte-identical. The delivered `sit.animation.json` is
-renamed `sit_full.animation.json` to reserve `sit` for a later hold animation.
-Mod metadata lives in adjacent sidecars. Batch 2 follows the animator's
-`NOTES_v2.md` contract, measured against Blockbench 5.2.2 on Steve and Alex.
+The 31 built-in animator emotes (all built-ins except stretch) were authored
+in **batches 1–3 by Blockato**, the Blockbench animator, for **QuarkOS**.
+The complete 32-emote list is in [README](README.md). Animation exports and the
+table's geometry/PNG ship byte-identical; presentation lives in sidecars.
+Batch 3 follows the authoritative `NOTES_v3.md` and `md5_delivered.txt`.
+`sit_full/sit_full.animation.json` now uses `animation.emote.sit_full` exactly
+as delivered. Sit uses the down-and-hold `animation.emote.sit` export: accept
+`sit.animation.json` when it is hold-mode, otherwise use `sit_v2.animation.json`.
+The older four-second one-shot is never shipped as sit.
 
 **Stretch**, the remaining original emote, and accompanying implementation and
 documentation were authored for QuarkOS Emotes with Codex assistance.

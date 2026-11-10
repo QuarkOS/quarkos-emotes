@@ -20,6 +20,10 @@ public final class ClientHarness {
     private static Stage stage=Stage.TITLE;
     private static int ticks,index,wait,pass,fail;
     private static boolean queued,moved,summary,optionsReady,handMoved;
+    private static boolean restoringCamera;
+    private static int restoreTicks;
+    private static double bodyX,bodyY;
+    public static String model="steve";
     private static List<Shot> shots=List.of();
     private static Path pending;
     public static float portraitDistance=2.85f,portraitDrop=.65f,portraitOrbit,portraitForward;
@@ -44,9 +48,29 @@ public final class ClientHarness {
             case "point" -> 1.0;
             case "cheer" -> .75;
             case "stretch" -> 1.15;
+            case "yes", "no", "rage", "victory" -> .35;
+            case "cry" -> .95;
+            case "heart_hands" -> .8;
+            case "wave_big", "slow_clap" -> .7;
+            case "backflip" -> .8;
+            case "spin" -> .9;
+            case "worm" -> 1.25;
+            case "floss", "zombie_walk" -> .25;
+            case "tpose" -> .5;
+            case "sit", "sleep" -> e.length();
             default -> Math.min(1,e.length()/2);
         };
-        return Math.min(time,Math.max(0,e.length()-.05));
+        return Math.min(time,e.length());
+    }
+    public static void rotation(int entity,float x,float y) {
+        var mc=Minecraft.getInstance();
+        if(active()&&mc.player!=null&&mc.player.getId()==entity) {
+            bodyX=Math.max(bodyX,Math.abs(Math.toDegrees(x)));bodyY=Math.max(bodyY,Math.abs(Math.toDegrees(y)));
+        }
+    }
+    private static void check(String name,boolean ok,String detail) {
+        if(ok)pass++;else fail++;
+        LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name={} result={} detail={}",name,ok?"PASS":"FAIL",detail);
     }
     public static boolean active() { return Boolean.getBoolean("quarkos_emotes.harness"); }
     public static void recordHand(boolean changed) { MultiplayerHarness.recordHand(changed);if(active())handMoved|=changed; }
@@ -120,15 +144,23 @@ public final class ClientHarness {
             boolean all=only.contains("")||only.contains(name)||only.contains(e.id())||only.contains("emote-"+name);
             if(all) list.add(new Shot("emote-"+name,e.id(),CameraType.THIRD_PERSON_FRONT,""));
             if(all||only.contains("emote-"+name+"-34")) list.add(new Shot("emote-"+name+"-34",e.id(),CameraType.THIRD_PERSON_FRONT,"34"));
-            if(name.equals("tableflip")||name.equals("groove")||name.equals("bigdance")) {
-                if(all||only.contains("emote-"+name+"-back")) list.add(new Shot("emote-"+name+"-back",e.id(),CameraType.THIRD_PERSON_BACK,""));
+            if(Set.of("backflip","worm","floss").contains(name))for(String model:List.of("steve","alex")) {
+                String variant="emote-"+name+"-"+model;
+                if(all||only.contains(variant))list.add(new Shot(variant,e.id(),CameraType.THIRD_PERSON_FRONT,"34"));
+            }
+            if(name.equals("spin")&&(all||only.contains("emote-spin-90")))
+                list.add(new Shot("emote-spin-90",e.id(),CameraType.THIRD_PERSON_FRONT,"90"));
+            if(Set.of("tableflip","groove","bigdance","backflip","worm").contains(name)) {
+                if(!Set.of("backflip","worm").contains(name)&&(all||only.contains("emote-"+name+"-back")))
+                    list.add(new Shot("emote-"+name+"-back",e.id(),CameraType.THIRD_PERSON_BACK,""));
                 if(all||only.contains("emote-"+name+"-side")) list.add(new Shot("emote-"+name+"-side",e.id(),CameraType.THIRD_PERSON_FRONT,"side"));
             }
         }
         String wave=EmoteResources.REGISTRY.all().stream().filter(e->e.id().endsWith(":wave")).map(Emote::id).findFirst()
                 .orElse(EmoteResources.REGISTRY.all().isEmpty()?"":EmoteResources.REGISTRY.all().getFirst().id());
-        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","fp-wave","fp-wave-camera")) if(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel")))
-            list.add(new Shot(ui,wave,ui.equals("fp-wave")?CameraType.FIRST_PERSON:CameraType.THIRD_PERSON_FRONT,ui));
+        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","fp-wave","fp-wave-camera","fp-sleep","fp-sleep-camera")) if(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel")))
+            list.add(new Shot(ui,ui.startsWith("fp-sleep")?"quarkos_emotes:sleep":wave,
+                    ui.equals("fp-wave")||ui.equals("fp-sleep")?CameraType.FIRST_PERSON:CameraType.THIRD_PERSON_FRONT,ui));
         if(list.isEmpty())throw new IllegalArgumentException("No screenshots match quarkos_emotes.only");
         return list;
     }
@@ -147,24 +179,35 @@ public final class ClientHarness {
             stage=Stage.STOP;wait=0;return;
         }
         var shot=shots.get(index);anchor(mc);
+        if(restoringCamera) {
+            if(++restoreTicks<6)return;
+            check(shot.name()+"-restore",mc.options.getCameraType()==CameraType.FIRST_PERSON&&EmotesClient.player(mc.player.getUUID())==null,
+                    "camera_restored_after_0.2s_cancel_blend");
+            restoringCamera=false;index++;wait=0;ticks=0;return;
+        }
         if(wait==0) {
-            moved=false;handMoved=false;queued=false;mc.setScreen(null);
+            moved=false;handMoved=false;queued=false;bodyX=bodyY=0;mc.setScreen(null);
+            model=shot.name().endsWith("-alex")?"alex":"steve";
             portraitOrbit=shot.ui().equals("side")?90:shot.ui().equals("34")?35:0;
             portraitDistance=2.85f;portraitDrop=.65f;portraitForward=0;
             if(shot.id().endsWith(":tableflip")) {
                 portraitDistance=portraitOrbit==0?3.1f:2.85f;portraitDrop=.8f;
                 if(portraitOrbit!=0)portraitForward=.55f;
             }
-            if(shot.id().endsWith(":sit_full")) { portraitDistance=2.25f;portraitDrop=1.05f; }
-            EmoteConfig.get().firstPerson=shot.ui().equals("fp-wave-camera")?EmoteConfig.FirstPerson.THIRD_PERSON_CAMERA:EmoteConfig.FirstPerson.SHOW_ARMS;
+            if(shot.id().endsWith(":sit_full")||shot.id().endsWith(":sit")) { portraitDistance=2.25f;portraitDrop=1.05f; }
+            if(shot.id().endsWith(":backflip")) { portraitDistance=3.3f;portraitDrop=0; }
+            if(shot.id().endsWith(":worm")||shot.id().endsWith(":sleep")) { portraitDistance=3.0f;portraitDrop=1.3f; }
+            boolean cameraShot=shot.ui().endsWith("-camera");
+            EmoteConfig.get().firstPerson=cameraShot?EmoteConfig.FirstPerson.THIRD_PERSON_CAMERA:EmoteConfig.FirstPerson.SHOW_ARMS;
             mc.options.setCameraType(shot.camera());
-            if(shot.ui().equals("fp-wave-camera")) {
+            if(cameraShot) {
                 mc.options.setCameraType(CameraType.FIRST_PERSON);EmotesClient.play(shot.id());
                 if(mc.options.getCameraType()!=CameraType.THIRD_PERSON_BACK) throw new IllegalStateException("First-person camera mode did not switch");
             } else EmotesClient.preview(shot.id());
-            var p=EmotesClient.player(mc.player.getUUID());if(p!=null)p.freeze(poseTime(p.emote()));
+            var p=EmotesClient.player(mc.player.getUUID());if(p!=null)p.freeze(shot.ui().equals("90")?.63:
+                    p.emote().loop()==Emote.Loop.HOLD?p.emote().length()+1:poseTime(p.emote()));
             // F1 also hides the first-person hands. Keep the normal HUD for that evidence shot.
-            mc.options.hideGui=!shot.ui().equals("fp-wave");
+            mc.options.hideGui=!(shot.ui().equals("fp-wave")||shot.ui().equals("fp-sleep"));
             if(shot.ui().startsWith("ui-wheel")) { var wheel=new EmoteWheelScreen();mc.setScreen(wheel);if(shot.ui().endsWith("hover"))wheel.harnessHover=0; }
             if(shot.ui().equals("ui-config")) {
                 mc.setScreen(new EmoteConfigScreen(null));
@@ -179,19 +222,35 @@ public final class ClientHarness {
         Path path=directory().resolve(shot.name()+".png");
         if(!queued) { Files.createDirectories(path.getParent());Files.deleteIfExists(path);pending=path;queued=true;return; }
         if(!Files.isRegularFile(path)) { if(wait>300) throw new IllegalStateException("Screenshot not written: "+path);return; }
+        if(shot.name().equals("emote-backflip")||shot.name().equals("emote-spin"))
+            check(shot.name()+"-full-turn",shot.id().endsWith(":backflip")?bodyX>150:bodyY>150,
+                    "rendered_body_degrees_x="+bodyX+"_y="+bodyY);
+        if(shot.name().endsWith("-steve")||shot.name().endsWith("-alex")) {
+            //? if >=1.21.11 {
+            boolean slim=mc.player.getSkin().model()==net.minecraft.world.entity.player.PlayerModelType.SLIM;
+            //?} else {
+            /*boolean slim=mc.player.getSkin().model()==net.minecraft.client.resources.PlayerSkin.Model.SLIM;
+            *///?}
+            check(shot.name()+"-model",slim==model.equals("alex"),"forced_skin_and_model="+model);
+        }
+        var playback=EmotesClient.player(mc.player.getUUID());
+        if(shot.id().equals("quarkos_emotes:sit")||shot.id().equals("quarkos_emotes:sleep"))
+            check(shot.name()+"-hold",playback!=null&&playback.state()==EmotePlayer.State.HOLDING&&playback.weight(0)==1,
+                    "held_final_pose_survives_anchor");
         if(shot.name().startsWith("emote-")&&!shot.name().endsWith("-back")&&!shot.name().endsWith("-side")&&!shot.name().endsWith("-34")) {
             boolean ok=moved;if(ok)pass++;else fail++;
             LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name={} result={} detail={}",shot.id(),ok?"PASS":"FAIL",ok?"rendered player bone changed":"rendered pose equals idle or model hook was not reached");
         }
-        if(shot.ui().equals("fp-wave")) {
+        if(shot.ui().equals("fp-wave")||shot.ui().equals("fp-sleep")) {
             if(handMoved)pass++;else fail++;
-            LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name=fp-wave result={} detail=animated_hand_render_hook",handMoved?"PASS":"FAIL");
+            LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name={} result={} detail=animated_hand_render_hook",shot.name(),handMoved?"PASS":"FAIL");
         }
-        if(shot.ui().equals("fp-wave-camera")) {
+        if(shot.ui().endsWith("-camera")) {
             boolean ok=mc.options.getCameraType()==CameraType.THIRD_PERSON_BACK&&moved;
             if(ok)pass++;else fail++;
-            LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name=fp-wave-camera result={} detail=camera_switched_and_pose_rendered",ok?"PASS":"FAIL");
+            LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name={} result={} detail=camera_switched_and_pose_rendered",shot.name(),ok?"PASS":"FAIL");
             EmotesClient.stop();
+            restoringCamera=true;restoreTicks=0;return;
         }
         index++;wait=0;ticks=0;
     }

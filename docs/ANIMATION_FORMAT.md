@@ -1,16 +1,22 @@
 # QuarkOS Emotes animation format
 
 The runtime reads numeric Blockbench Bedrock animations (`format_version`
-`1.8.0`), without executable Molang. The fifteen built-in animations by
-**Blockato** are byte-identical animator exports from batches 1 and 2, following
-`NOTES_v2.md` (older NOTES/NOTES_v1 are superseded). Groove (2 s) and bigdance
-(4 s) loop; wave, thinking, tableflip, facepalm, clap, bow, salute, laugh, shrug,
-cheer, point, dab and sit_full play once. Stretch is the remaining original.
-The delivered four-second `sit` export is renamed `sit_full.animation.json`
-without changing its contents or `animation.emote.sit` key. The `sit` ID is
-free for a later hold animation; no placeholder is shipped. Keys are on the
-20 fps grid, predominantly Catmull–Rom; cheer's positions are linear to avoid
-floor dips. Keep exported files unchanged and presentation settings in sidecars.
+`1.8.0`), without executable Molang. There are exactly **32 built-ins**:
+31 byte-identical animator exports by **Blockato**, batches 1–3, plus stretch.
+The authoritative delivery contract is `NOTES_v3.md` with `md5_delivered.txt`.
+The complete list is in [README](../README.md). Groove, bigdance, floss and
+zombie_walk loop; sit and sleep hold their last frame; the other 26 play once.
+Keys are on the 20 fps grid, predominantly Catmull–Rom. Keep exported animation
+files unchanged and presentation settings in sidecars.
+
+Sit has ID `quarkos_emotes:sit`, animation key `animation.emote.sit`, and a
+1.10-second down-and-hold clip. Import `sit/sit.animation.json` **only when its
+animation is `hold_on_last_frame`**; otherwise prefer `sit/sit_v2.animation.json`.
+Ship the selected bytes as `emotes/sit/sit.animation.json`. The original
+four-second one-shot canonical sit must never replace the hold. Archived
+`sit_v1` is superseded by an equivalent canonical `sit_full` delivery.
+`sit_full/sit_full.animation.json` remains a one-shot, with its delivered
+`animation.emote.sit_full` key, copied byte-for-byte.
 
 ## Files, IDs and overrides
 
@@ -63,9 +69,13 @@ player outer layers follow their corresponding parts.
 
 Apply animation **on top of the model's own vanilla pose and pivots**.
 Positions are additive pixel offsets, rotations are additive Euler degrees,
-and scale multiplies the baseline scale. Rest is vanilla idle. Do not replace
-arm pivots with Steve values when rendering a slim model. A Steve shoulder
-is Java Y=2; a slim shoulder is Y=2.5.
+and scale multiplies the baseline scale. Rest is vanilla idle. By default
+(`"arm_pivot": "model"`) retain the model's own pivots: a Steve shoulder is
+Java Y=2; a slim shoulder is Y=2.5. For an emote with `"arm_pivot": "steve"`,
+shift slim arm pivots by **−0.5 Java pixels** at full weight (Bedrock Y=22).
+Blend the shift with the entry/exit weight; model defaults reset each frame,
+so cancellation, completion and the next emote restore Y=2.5. Wide models and
+unflagged emotes retain their own pivot. First-person arms use the same rule.
 
 Coordinates follow Blockbench's standard Bedrock convention: front is **−Z**,
 player right is **+X in the Blockbench viewport**, and Y points up. Exported
@@ -83,6 +93,17 @@ outward, and position X=−1.5 moves the right shoulder outward by 1.5 pixels.
 These examples distinguish the X/Z sign convention from older generic
 conversion recipes. Position and rotation never move the actual entity or
 change its collision box.
+
+## Whole-body orbit without a root bone
+
+Backflip, spin, worm and sleep are baked across all six sibling bones. The
+animator writes each bone's composed **unwrapped Euler rotation** and an
+orbit position offset `G(pivot) − pivot` around a shared centre. Apply those
+channels directly; adding a root transform would apply the movement twice.
+Orbit offsets use Steve's pivots, so these four sidecars set `"arm_pivot": "steve"`.
+Otherwise Alex's 0.5-pixel pivot difference yields shoulder drift of
+`|(R−I)·(0,0.5,0)|` (0.71 px at 90°, 1 px at 180°). The lying sleep/worm head
+also has an intentional 2-pixel offset to rest at torso height; retain it.
 
 ## Channels, interpolation and playback
 
@@ -111,8 +132,17 @@ segments; keep `linear` for faithful exported curves. For `loop: true`,
 Catmull–Rom wraps neighbours as Blockbench 5.2.2 does: before the first key
 use the second-to-last key, and after the last key use the second key. Author
 equal first/last seam keys; uniform seam intervals give continuous velocity.
-Non-looping clips retain clamped neighbours. Do not wrap rotation
-angles to the shortest path: authored full turns must remain full turns.
+Non-looping clips retain clamped neighbours.
+
+Rotation values are **raw, unwrapped Bedrock Euler degrees**, interpolated
+keyframe by keyframe **per component** for Catmull–Rom, linear and step.
+Never normalize angles modulo 360°, choose a shortest path, or quaternion-slerp
+between keys or during entry/exit blends. The parser keeps signed values;
+`Track` samples components, `BedrockAxes.rotation` converts degrees to radians,
+`PoseMath` blends each component, and `EmotePose` writes ModelPart's Euler fields.
+Backflip body X passes through −180° at 0.8 s and reaches −360°; spin body Y
+passes through 270.5° at 0.9 s and ends at +360°. A matrix/quaternion used to
+render the resulting Euler pose is fine; quaternion interpolation is not.
 
 `loop: false` plays once, `true` repeats, and `"hold_on_last_frame"` holds
 the final frame indefinitely after playing once, until movement/cancellation
@@ -179,6 +209,10 @@ cancellation enabled, and linear easing. Existing animation-level `quarkos`
 blocks take precedence over document-level blocks; document-level blocks
 take precedence over the sidecar. Metadata is selected as a complete object.
 
+Optional `arm_pivot` accepts `"model"` (default) or `"steve"`; invalid values
+are rejected. It controls the temporary slim arm-pivot override described above.
+Representative capture times live in the harness table, preserving animator bytes.
+
 Optional `sound` metadata accepts `id`, `at` (seconds, default 0), `volume`
 (default 1) and `pitch` (default 1). Standard animation `sound_effects` timelines
 also work, with `{ "effect": "minecraft:block.wood.hit" }` or an array of
@@ -205,12 +239,12 @@ Unchanged runtime files are reported and skipped without writes or backups.
 New sidecars use a readable literal name, paper icon, fun category and movement
 cancellation; review their presentation before release. Existing sidecars are
 kept (including formatting), unless the source delivers replacement metadata.
-The one-shot `sit` delivery maps to `sit_full`; a later `hold_on_last_frame`
-`sit` maps to `sit`, keeping both IDs distinct. A curated source path limits
-intake when more animator batches are present than should ship in a release.
-If the animator keeps the old one-shot `sit/sit.animation.json` beside an
-equivalent `sit_full/sit_full.animation.json`, the canonical sit_full folder
-wins. Other conflicting duplicate targets remain errors.
+For E8, pass `--include` with the comma-separated names in README to keep the
+catalog at 32 even when the intake contains later batches. Omit it to import
+all delivered names. The sit selection rule above takes precedence over generic
+duplicate detection: canonical hold wins over v2; old canonical one-shot falls
+back to v2. Equivalent archived one-shots defer to canonical sit_full. Other
+conflicting duplicate targets remain errors.
 
 It preserves animation and bone names, numeric channels, loop modes and sounds.
 Single-animation files copy byte-for-byte; multi-animation documents split

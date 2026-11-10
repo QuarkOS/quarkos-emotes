@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:tpose",
+  "name": "emote.quarkos_emotes.tpose",
+  "icon": "minecraft:armor_stand",
+  "category": "pose",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

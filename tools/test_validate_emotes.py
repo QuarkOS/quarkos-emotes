@@ -70,14 +70,17 @@ class ValidatorTests(unittest.TestCase):
             with self.assertRaises(validator.Invalid):
                 validator.validate_data(export(loop=mode), "bad.animation.json")
 
-    def test_shipped_catalog_has_exact_sixteen_ids_and_only_two_loops(self):
+    def test_shipped_catalog_has_exact_thirty_two_ids_four_loops_two_holds(self):
         files = [p for p in validator.BUILTINS.rglob("*.json") if validator.animation_file(p)]
         rows = [validator.validate(p) for p in files]
-        expected = set("wave thinking clap tableflip facepalm groove bigdance bow salute laugh shrug cheer point dab sit_full stretch".split())
+        expected = set("wave thinking clap tableflip facepalm groove bigdance bow salute laugh shrug cheer point dab sit_full stretch yes no cry rage victory heart_hands wave_big backflip spin worm floss tpose zombie_walk slow_clap sleep sit".split())
         self.assertEqual({r[0] for r in rows}, {"quarkos_emotes:" + name for name in expected})
-        self.assertEqual(len(rows), 16)
-        self.assertEqual({r[0] for r in rows if r[2] == "true"}, {"quarkos_emotes:groove", "quarkos_emotes:bigdance"})
-        self.assertFalse((validator.BUILTINS / "sit").exists())
+        self.assertEqual(len(rows), 32)
+        self.assertEqual({r[0] for r in rows if r[2] == "true"}, {"quarkos_emotes:"+n for n in ("groove", "bigdance", "floss", "zombie_walk")})
+        self.assertEqual({r[0] for r in rows if r[2] == "hold_on_last_frame"}, {"quarkos_emotes:sit", "quarkos_emotes:sleep"})
+        for name in expected - {"stretch"}:
+            side = validator.read_json(validator.BUILTINS / name / (name+".quarkos.json"))
+            self.assertEqual(side.get("arm_pivot", "model"), "steve" if name in {"backflip", "spin", "worm", "sleep"} else "model")
         names = validator.read_json(validator.LANG)
         for row in rows:
             self.assertIn(row[5], names)
@@ -85,7 +88,7 @@ class ValidatorTests(unittest.TestCase):
     def test_bad_sidecar_sound_time_and_type_rejected(self):
         side_path = self.folder / "tableflip.quarkos.json"
         original = validator.read_json(side_path)
-        for patch in ({"cancel_on_move": "yes"}, {"sound": {"id": "minecraft:block.wood.hit", "at": 100}}):
+        for patch in ({"cancel_on_move": "yes"}, {"arm_pivot": "alex"}, {"sound": {"id": "minecraft:block.wood.hit", "at": 100}}):
             with self.subTest(patch=patch):
                 data = original | patch
                 side_path.write_text(json.dumps(data))

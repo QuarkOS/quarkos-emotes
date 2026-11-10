@@ -338,6 +338,38 @@ class ImportTests(unittest.TestCase):
         self.assertFalse((folder / "table_prop.png").exists())
         self.assertEqual(next(self.backups.glob("*/tableflip/table_prop.geo.json")).read_bytes(), old_geo)
 
+    def test_sit_canonical_hold_wins_and_old_canonical_uses_v2(self):
+        canonical = self.source / "sit/sit.animation.json"
+        v2 = self.write(self.source / "sit/sit_v2.animation.json", export("animation.emote.sit", "hold_on_last_frame"))
+        self.write(canonical, export("animation.emote.sit", False))
+        self.write(self.source / "sit/sit_v1.animation.json", export("animation.emote.sit", False))
+        self.write(self.source / "sit_full/sit_full.animation.json", export("animation.emote.sit_full", False))
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        target = self.output / "sit/sit.animation.json"
+        self.assertEqual(target.read_bytes(), v2.read_bytes())
+        # The renamed canonical hold deliberately differs: choose it by mode,
+        # and do not reject the archived v2 as a colliding duplicate.
+        data = export("animation.emote.sit", "hold_on_last_frame")
+        data["animations"]["animation.emote.sit"]["animation_length"] = 3
+        self.write(canonical, data)
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(target.read_bytes(), canonical.read_bytes())
+        v2.unlink()
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertIn("unchanged", report)
+
+    def test_include_limits_intake_when_later_batches_are_present(self):
+        self.write(self.source / "backflip/backflip.animation.json", export("animation.emote.backflip"))
+        self.write(self.source / "later/later.animation.json", export("animation.emote.later"))
+        code, report = self.run_cli("--apply", "--include", "quarkos_emotes:backflip,wave")
+        self.assertEqual(code, 0, report)
+        self.assertTrue((self.output / "backflip/backflip.animation.json").exists())
+        self.assertFalse((self.output / "later").exists())
+        self.assertIn("outside --include selection", report)
+
     def test_empty_wip_directory_is_successful(self):
         self.write(self.source / "rig" / "player.geo.json", {"minecraft:geometry": []})
         (self.source / "wave").mkdir()

@@ -1,0 +1,9 @@
+{
+  "id": "quarkos_emotes:sleep",
+  "name": "emote.quarkos_emotes.sleep",
+  "icon": "minecraft:red_bed",
+  "category": "pose",
+  "cancel_on_move": true,
+  "easing": "linear",
+  "arm_pivot": "steve"
+}

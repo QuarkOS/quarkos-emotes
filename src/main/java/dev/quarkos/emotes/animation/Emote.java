@@ -4,15 +4,20 @@ import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Map;
 public record Emote(String id, String name, String icon, String category, double length, Loop loop,
-                    boolean cancelOnMove, String easing, Map<String, Bone> bones, List<Sound> sounds, JsonObject prop, List<PropGeometry> props) {
+                    boolean cancelOnMove, String easing, Map<String, Bone> bones, List<Sound> sounds, JsonObject prop, List<PropGeometry> props, ArmPivot armPivot) {
+    public Emote(String id, String name, String icon, String category, double length, Loop loop,
+                 boolean cancelOnMove, String easing, Map<String,Bone> bones, List<Sound> sounds, JsonObject prop, List<PropGeometry> props) {
+        this(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,props,ArmPivot.MODEL);
+    }
     public Emote(String id, String name, String icon, String category, double length, Loop loop,
                  boolean cancelOnMove, String easing, Map<String,Bone> bones, List<Sound> sounds, JsonObject prop) {
         this(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,List.of());
     }
     public Emote withProps(List<PropGeometry> geometries) {
-        return new Emote(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,geometries);
+        return new Emote(id,name,icon,category,length,loop,cancelOnMove,easing,bones,sounds,prop,geometries,armPivot);
     }
     public enum Loop { ONCE, LOOP, HOLD }
+    public enum ArmPivot { MODEL, STEVE }
     public record Sound(double time, String id, float volume, float pitch) {}
     public record Bone(Track rotation, Track position, Track scale) {
         public Pose sample(double time, String easing) {

@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:victory",
+  "name": "emote.quarkos_emotes.victory",
+  "icon": "minecraft:gold_ingot",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

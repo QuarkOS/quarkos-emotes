@@ -7,6 +7,8 @@ public final class ClientProofHooks {
         void tick(Minecraft mc);
         void record(int entity,boolean changed);
         void recordHand(boolean changed);
+        void rotation(int entity,float x,float y);
+        String model();
         void capture();
         float distance();float drop();float orbit();float forward();
     }
@@ -23,6 +25,8 @@ public final class ClientProofHooks {
     public static void tick(Minecraft mc) {if(enabled())support().tick(mc);}
     public static void record(int entity,boolean changed) {if(enabled())support().record(entity,changed);}
     public static void recordHand(boolean changed) {if(enabled())support().recordHand(changed);}
+    public static void rotation(int entity,float x,float y) {if(visual())support().rotation(entity,x,y);}
+    public static String model() {return visual()?support().model():"";}
     public static void capture() {if(enabled())support().capture();}
     public static float distance() {return visual()?support().distance():4;}
     public static float drop() {return visual()?support().drop():0;}

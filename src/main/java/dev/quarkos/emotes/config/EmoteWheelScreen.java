@@ -16,15 +16,19 @@ public final class EmoteWheelScreen extends Screen {
     private EditBox search;
     private int page,hover=-1,cx,cy,radius;
     private boolean favorites;
+    private int category;
+    private static final List<String> CATEGORIES=List.of("all","greeting","reaction","dance","pose","fun");
     public int harnessHover=-1;
     public EmoteWheelScreen() { super(Component.translatable("screen.quarkos_emotes.wheel")); }
     @Override protected void init() {
         cx=width/2; radius=Math.min(104,Math.max(48,(height-118)/2)); cy=54+(height-118)/2;
         String query=search==null?"":search.getValue();
-        int searchWidth=Math.min(240,width-32);
-        search=new EditBox(font,cx-searchWidth/2,29,searchWidth,18,Component.translatable("text.quarkos_emotes.search"));
+        int searchWidth=Math.min(160,width-132),left=cx-(searchWidth+100)/2;
+        search=new EditBox(font,left,29,searchWidth,18,Component.translatable("text.quarkos_emotes.search"));
         search.setHint(Component.translatable("text.quarkos_emotes.search")); search.setMaxLength(80); search.setValue(query);
         search.setResponder(s->page=0); addRenderableWidget(search);
+        addRenderableWidget(Button.builder(categoryText(),b->{category=(category+1)%CATEGORIES.size();page=0;b.setMessage(categoryText());})
+                .bounds(left+searchWidth+4,28,96,20).tooltip(Tooltip.create(Component.translatable("tooltip.quarkos_emotes.category"))).build());
         addRenderableWidget(Button.builder(Component.literal("‹"),b->page(-1)).bounds(cx-104,height-27,24,20)
                 .tooltip(Tooltip.create(Component.translatable("tooltip.quarkos_emotes.previous_page"))).build());
         addRenderableWidget(Button.builder(favoritesText(),b->{favorites=!favorites;page=0;b.setMessage(favoritesText());})
@@ -41,13 +45,18 @@ public final class EmoteWheelScreen extends Screen {
         return favorites?Component.translatable("text.quarkos_emotes.all_emotes"):
                 Component.translatable("text.quarkos_emotes.favorites").append(" ("+EmoteConfig.get().favorites.size()+")");
     }
+    private Component categoryText() {return Component.translatable("category.quarkos_emotes."+CATEGORIES.get(category));}
 
     private List<Emote> filtered() {
         String q=search==null?"":search.getValue().toLowerCase(Locale.ROOT);
-        var order=List.of("wave","thinking","clap","tableflip","facepalm","groove","bigdance","cheer","bow","salute","laugh","shrug","point","dab","sit_full","stretch");
+        var order=List.of("wave","thinking","clap","tableflip","facepalm","groove","bigdance","cheer",
+                "yes","no","cry","rage","victory","heart_hands","wave_big","slow_clap",
+                "bow","salute","laugh","shrug","point","dab","sit","sit_full",
+                "backflip","spin","worm","floss","zombie_walk","sleep","tpose","stretch");
         var list=EmoteResources.REGISTRY.all().stream().sorted(Comparator.<Emote>comparingInt(e->{int i=order.indexOf(e.id().replace("quarkos_emotes:",""));return i<0?Integer.MAX_VALUE:i;}).thenComparing(Emote::id)).toList();
         if(favorites) list=EmoteConfig.get().favorites.stream().map(EmoteResources.REGISTRY::get).filter(Objects::nonNull).toList();
-        return list.stream().filter(e->e.id().contains(q)||label(e).getString().toLowerCase(Locale.ROOT).contains(q)).toList();
+        return list.stream().filter(e->category==0||e.category().equals(CATEGORIES.get(category)))
+                .filter(e->e.id().contains(q)||label(e).getString().toLowerCase(Locale.ROOT).contains(q)).toList();
     }
     private List<Emote> slots() {
         var list=filtered(); page=Math.clamp(page,0,Math.max(0,(list.size()-1)/8));

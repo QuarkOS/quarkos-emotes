@@ -1,7 +1,7 @@
 {
 	"format_version": "1.8.0",
 	"animations": {
-		"animation.emote.sit": {
+		"animation.emote.sit_full": {
 			"loop": false,
 			"animation_length": 4.0,
 			"bones": {

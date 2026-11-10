@@ -1,0 +1,9 @@
+{
+  "id": "quarkos_emotes:worm",
+  "name": "emote.quarkos_emotes.worm",
+  "icon": "minecraft:slime_ball",
+  "category": "dance",
+  "cancel_on_move": true,
+  "easing": "linear",
+  "arm_pivot": "steve"
+}

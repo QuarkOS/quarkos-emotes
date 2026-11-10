@@ -12,8 +12,9 @@ public final class EmotePose {
         var parts=java.util.Map.of("head",model.head,"body",model.body,"right_arm",model.rightArm,
                 "left_arm",model.leftArm,"right_leg",model.rightLeg,"left_leg",model.leftLeg);
         var baseline=new java.util.LinkedHashMap<String,Emote.Pose>();
-        parts.forEach((name,part)->baseline.put(name,current(part)));
+        parts.forEach((name,part)->baseline.put(name,playerBase(part,name,playback.emote(),weight)));
         PoseMath.flat(baseline,pose,weight).forEach((name,result)->set(parts.get(name),result));
+        if(dev.quarkos.emotes.ClientProofHooks.visual())dev.quarkos.emotes.ClientProofHooks.rotation(entityId,model.body.xRot,model.body.yRot);
         if(before!=null)dev.quarkos.emotes.ClientProofHooks.record(entityId,changed(before,snapshot(model)));
     }
     private static double[] snapshot(HumanoidModel<?> m) {
@@ -30,6 +31,19 @@ public final class EmotePose {
     public static void apply(ModelPart part,Emote.Pose pose,float weight) {
         if(pose==null) return;
         set(part,PoseMath.additive(current(part),pose,weight));
+    }
+    public static void applyArm(ModelPart part,String bone,Emote emote,Emote.Pose pose,float weight) {
+        if(pose!=null)set(part,PoseMath.additive(playerBase(part,bone,emote,weight),pose,weight));
+    }
+    private static Emote.Pose playerBase(ModelPart part,String bone,Emote emote,float weight) {
+        // Initial pose survives animation offsets and identifies the baked model
+        // in both MC versions, including the first-person arm render path.
+        //? if >=1.21.11 {
+        float initialY=part.getInitialPose().y();
+        //?} else {
+        /*float initialY=part.getInitialPose().y;
+        *///?}
+        return bone.endsWith("_arm")?PoseMath.armPivot(current(part),Math.abs(initialY-2.5f)<.001f,emote.armPivot(),weight):current(part);
     }
     private static Emote.Pose current(ModelPart part) {
         return new Emote.Pose(new Vec3(part.xRot,part.yRot,part.zRot),new Vec3(part.x,part.y,part.z),new Vec3(part.xScale,part.yScale,part.zScale));

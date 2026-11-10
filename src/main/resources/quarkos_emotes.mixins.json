@@ -12,7 +12,8 @@
     "LayerAccess",
     "GuiCaptureMixin",
     "CameraZoomMixin",
-    "EmoteHandsMixin"
+    "EmoteHandsMixin",
+    "HarnessSkinMixin"
   ],
   "injectors": {
     "defaultRequire": 1

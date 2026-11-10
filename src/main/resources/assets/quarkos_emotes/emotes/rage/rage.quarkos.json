@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:rage",
+  "name": "emote.quarkos_emotes.rage",
+  "icon": "minecraft:blaze_powder",
+  "category": "reaction",
+  "cancel_on_move": true,
+  "easing": "linear"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "quarkos_emotes:floss",
+  "name": "emote.quarkos_emotes.floss",
+  "icon": "minecraft:jukebox",
+  "category": "dance",
+  "cancel_on_move": true,
+  "easing": "linear"
+}
