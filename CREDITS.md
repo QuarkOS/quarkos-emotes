@@ -2,28 +2,28 @@
 
 **Project author and maintainer:** Emilio Schwaiger / QuarkOS.
 
-The 41 built-in animator emotes (all built-ins except stretch), plus the
-pushups_enter and meditate_loop chain clips, were authored in **batches 1–4
-by Blockato**, the Blockbench animator, for **QuarkOS**. The complete 42-emote
-list is in [README](README.md). Animation exports and the table/sword
-geometry and PNGs ship byte-identical; presentation lives in sidecars.
-Batch 4 follows `NOTES_v4.md`, `RENAMES.md` and `md5_delivered.txt`. The later
-sword delivery uses copied right-arm channels and matches the delivery MD5. Floss retains the v4 export now in `_archive/floss/`.
-`sit/sit.animation.json` is the canonical hold export, byte-identical to the
-archived sit_v2; sit_v1/sit_v2 files are ignored. `sit_full` retains the
-one-shot under its delivered `animation.emote.sit_full` key.
-Default_dance is Blockato's original generic two-bar routine, described in
-NOTES_v4; it does not reproduce another game's choreography.
+**Blockato** authored all **41 animator emotes**, the `pushups_enter` and
+`meditate_loop` chain clips, and the table/sword geometry and PNG textures
+for QuarkOS. All 47 shipped animator runtime files are byte-identical and
+MD5-identical to the current final delivery, including Floss v2 and Sword
+Salute v2. Presentation settings live in sidecars. See the complete categorized
+[42-emote list](README.md).
+
+The final delivery follows `NOTES_v5.md`, `RENAMES_v2.md`,
+`alex_recheck_v5.txt` and `md5_delivered.txt`. Sit is the canonical hold clip;
+archived versions and proof files are not shipped. Default Dance is Blockato's
+original generic two-bar routine described in NOTES_v4, not a recreation of
+another game's choreography. The sword texture is Blockato's provisional
+32×32 flat-colour artwork; final visual approval remains on the release checklist.
 
 **Stretch**, the remaining original emote, and accompanying implementation and
 documentation were authored for QuarkOS Emotes with Codex assistance.
 
-The project is provided under the repository's [MIT license](LICENSE),
-copyright 2026 Emilio Schwaiger. The build layout was adapted from the sister
-QuarkOS Cosmetics project. Blockbench is not bundled and its use does not
-imply endorsement.
+The project uses the [MIT license](LICENSE), copyright 2026 Emilio Schwaiger.
+The build layout was adapted from the sister QuarkOS Cosmetics project.
+Blockbench is not bundled; its use does not imply endorsement.
 
-Minecraft is developed by Mojang Studios. Referenced vanilla items and sounds
-resolve to assets supplied by the user's Minecraft installation; those assets
-are not redistributed or relicensed here. QuarkOS Emotes is an independent
-project, not an official Minecraft product or affiliated with Mojang or Microsoft.
+Minecraft is developed by Mojang Studios. Vanilla items and sounds resolve
+to the user's Minecraft installation and are not redistributed here. This is
+an independent project, not an official Minecraft product or affiliated with
+Mojang or Microsoft.

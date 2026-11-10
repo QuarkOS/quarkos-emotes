@@ -723,3 +723,91 @@ Parent follow-up:
    tracking/reload/respawn lifecycle and camera reset. No multiplayer proof
    was run in this task.
 4. Review/stage/commit from the parent with writable .git.
+
+## E10 — FINAL animator set, instant keys and scale-zero props (2026-11-10)
+
+This entry supersedes the E9 v4 content pin and its harness counts. No Gradle,
+Minecraft, multiplayer, publishing or `.git` writes were performed in E10.
+The parent's E8 in-game evidence remains 59/0 checks and 87 shots on Fabric
+1.21.11; that predates the final Floss v2/sword integration.
+
+Delivered work:
+
+- Read RENAMES_v2, alex_recheck_v5, NOTES_v4/v5 and the delivery MD5 ledger.
+  Verified exactly 41 animator emote folders after excluding archive/rig/tools.
+  Ship 41 + our Stretch = 42 IDs; 44 animation files include two chain clips.
+- `import_blockato.py --apply` now recopies every selected runtime file even
+  when unchanged, without unnecessary unchanged backups. It explicitly skips
+  `_archive/`, `rig/`, `tools/`, preserves sidecars, and reports each installed
+  byte/MD5 match against the delivery ledger. Generic sources without a ledger
+  are identified. Multi-animation splits are identified rather than claiming
+  byte identity. Full final apply: 41 unchanged folders, **47/47** matches.
+  Floss was refreshed to v2; Sword Salute v2 + sword geo/PNG already matched
+  the current canonical delivery and were recopied with every other payload.
+- Stable duplicate parsed-time keys merge first pre/last post; exact-time
+  sampling returns post. Catmull–Rom tangents stop at pre/post discontinuities;
+  step takes the new key at its exact time. Tick counts and partial time are
+  combined in tick units to avoid 0.05 accumulation and 2.15+.05 rounding.
+  Loop phase calculation avoids an unnecessary add/subtract of clip length.
+  Exit weight reaches exact zero when the finished threshold is reached.
+- Scale accepts uniform numbers/vectors, including pre/post. Props skip drawing
+  before matrix/cube submission when any scale magnitude is <1e-4; invisible
+  geometry ancestors hide children. Explicit player scale tracks govern parent
+  hiding; prop visibility never changes unkeyed player-limb visibility. Legacy
+  inline props also skip zero-scale rendering.
+- Root sword bone uses pivot [-5,22,0], no parent, copied arm rotation/position.
+  Sidecar `arm_pivot: steve` now includes sword_salute. V5 alex22 emotes
+  (backflip/spin/worm/sleep/lay_down/pushups including its entry) retain their
+  overrides; other emotes keep model pivots. The animator's 0.7918 px Alex
+  rotating-pivot mismatch uses 21.5; the override aligns the transforms at 22.
+- Full harness adds eight sword variants: Steve/Alex front/side/¾ at .8 s,
+  hidden at .249 s. EMOTE_CHECK compares sampled visibility and actual cube
+  submission, and requires the prop render pass even for hidden shots.
+  Full: **115 shots / 103 checks**. Quick: **46 shots / 51 checks**.
+  `-Ponly=sword_salute`: **10 shots / 27 checks** (quick: 1 shot / 2 checks).
+- Updated format guide, credits, README/changelogs and store copy with all 42
+  emotes by shipped category, final provenance and honest pending image slots.
+  Added docs/BLOCKATO_FINAL.md (all 47 hashes + pivot/proof notes) and
+  docs/RELEASE_CHECKLIST.md (remaining build/game/packaging/publishing checks).
+
+Validation:
+
+- **69/69 Java JUnit tests pass**, including eight InstantScaleTest cases:
+  scalar/vector scale, pre/post and step boundaries, duplicate parsed times,
+  loop sampling, partial ticks, every 20 Hz sword tick (5 on, 44 off), zero-axis
+  threshold, ancestor visibility, cancellation and 100 Hz Steve/Alex transforms.
+  `/tmp/e10-java-tests.txt`, cached JUnit runner `/tmp/e7_test.py`.
+- **38/38 Python tests pass**, including ledger mismatch/re-copy, reference-folder
+  exclusions and scalar/equal-time validation. `/tmp/e10-python-tests.txt`.
+- **Four-target javac passes**, runtime + proof separately, --release 21:
+  Fabric 1.21.1 / 1.21.11 and Forge 52.1.20 / 61.2.4. Existing
+  check_compile.py applies Identifier/ResourceLocation and
+  AvatarRenderer/PlayerRenderer substitutions in BOTH directions. Only existing
+  deprecation/unchecked warnings. `/tmp/e10-compile.txt`.
+- Validator **42 valid / 0 errors**, `/tmp/e10-validation.txt`.
+  Complete final delivery **47/47 exact bytes + MD5**, `/tmp/e10-import.txt`,
+  `/tmp/e10-bytes.txt`; durable manifest docs/BLOCKATO_FINAL.md.
+- Reflection of the actual compiled buildShots/poseTime verifies the full,
+  quick and focused sword shot/check counts above. `/tmp/e10-shot-plan.txt`.
+  This is offline plan inspection, not screenshots or live harness evidence.
+- `git diff --check` passes. `.git` remains untouched.
+
+TODO for follow-up agents / parent (do not treat offline checks as release proof):
+
+1. Review and commit E10 from the parent; run all four real Gradle build/test
+   targets and audit their newly built binary jars, including all 47 embedded
+   animator hashes, sword assets, sidecar and absence of dev/proof files.
+2. Run fresh full Fabric 1.21.11 harness (103/0, 115 shots), plus focused sword
+   on all four targets (27/0, 10 shots each). Quick option remains 51/0 with
+   46 shots; quick does not capture the additional sword variants.
+3. Inspect actual sword grip/UVs on Steve/Alex, exact live pop timing and
+   end/cancel/reload reset. Approve the provisional texture or get an updated
+   animator delivery. Review Floss v2 and all batch-4 poses/chains; accept or
+   address documented leg/torso overlap and intentional pushup shoulder slide.
+4. Run fresh dedicated sync + vanilla proof on all targets, retain actor 4/0,
+   viewer 10/0, vanilla 7/0 and EMOTE_MP_PROOF PASS; manually exercise tracking,
+   late join, chain stages, cancellation, lifecycle, F3+T and first-person reset.
+   Keep watchdog disabled and MP_TIMEOUT_SCALE=3 (raise for a loaded host).
+5. Follow docs/RELEASE_CHECKLIST.md: select real final-set store images, finish
+   artifact/dependency/environment/attribution/version review, then publish the
+   verified artifacts. Nothing was uploaded or published during this run.

@@ -52,5 +52,9 @@ public record Emote(String id, String name, String icon, String category, double
         public boolean moved() { return rotation.magnitude()+position.magnitude()+(Math.abs(scale.x()-1)+Math.abs(scale.y()-1)+Math.abs(scale.z()-1))>0.000001; }
     }
     public Emote { props=List.copyOf(props); bones=Map.copyOf(bones); sounds=List.copyOf(sounds); prop=prop==null ? null : prop.deepCopy(); }
-    public double wrap(double time) { return loop==Loop.LOOP && length>0 ? ((time%length)+length)%length : Math.max(0,Math.min(length,time)); }
+    public double wrap(double time) {
+        if(loop!=Loop.LOOP||length<=0)return Math.max(0,Math.min(length,time));
+        double phase=time%length;
+        return phase<0?phase+length:phase;
+    }
 }

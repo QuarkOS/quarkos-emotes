@@ -53,7 +53,7 @@ class BatchFourTest {
         for(int i=0;i<names.size();i++) {
             String name=names.get(i);var e=shipped(name);assertEquals(lengths[i],e.length());
             assertEquals(i<3?Emote.Loop.ONCE:i<7?Emote.Loop.LOOP:Emote.Loop.HOLD,e.loop());
-            assertEquals(Set.of("lay_down","pushups").contains(name)?Emote.ArmPivot.STEVE:Emote.ArmPivot.MODEL,e.armPivot());
+            assertEquals(Set.of("lay_down","pushups","sword_salute").contains(name)?Emote.ArmPivot.STEVE:Emote.ArmPivot.MODEL,e.armPivot());
             assertEquals("quarkos_emotes:"+name,e.id());assertTrue(e.cancelOnMove());
         }
     }

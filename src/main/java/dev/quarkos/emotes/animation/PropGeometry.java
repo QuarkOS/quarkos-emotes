@@ -14,6 +14,22 @@ public record PropGeometry(String texture,int textureWidth,int textureHeight,Lis
         }
     }
     public PropGeometry { bones=List.copyOf(bones); }
+    /** Signed scales may mirror; a near-zero magnitude on any axis hides. */
+    public static boolean hidden(Vec3 scale) {
+        return Math.abs(scale.x())<1e-4||Math.abs(scale.y())<1e-4||Math.abs(scale.z())<1e-4;
+    }
+    /** Shared by rendering and proof checks; an invisible ancestor hides its descendants. */
+    public boolean visible(Bone bone,EmotePlayer player,double partial) {
+        if(!player.propsVisible(partial)||hidden(bone.sample(player,partial).scale()))return false;
+        String parent=bone.parent();
+        if(parent==null)return true;
+        if(PropTransform.PLAYER_BONES.contains(parent)) {
+            var track=player.segment(partial).animation().bones().get(parent);
+            // Player limbs are never implicitly hidden by prop visibility.
+            return track==null||track.scale().keys().isEmpty()||!hidden(player.pose(partial).get(parent).scale());
+        }
+        return visible(bones.stream().filter(b->b.name().equals(parent)).findFirst().orElseThrow(),player,partial);
+    }
     public static List<PropGeometry> parse(Reader reader,String texture) {
         JsonObject root=JsonParser.parseReader(reader).getAsJsonObject();
         if(!"1.12.0".equals(root.get("format_version").getAsString())) throw new IllegalArgumentException("Expected geometry format_version 1.12.0");

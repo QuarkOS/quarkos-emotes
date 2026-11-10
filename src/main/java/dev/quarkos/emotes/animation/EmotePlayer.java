@@ -8,11 +8,13 @@ public final class EmotePlayer {
     public enum State { PLAYING, HOLDING, BLENDING_OUT, DONE }
     private final Emote emote;
     private double elapsed, stopTime=Double.NaN, frozen=Double.NaN, previous=-1e-9;
+    private double elapsedBase;
+    private long elapsedTicks;
     public EmotePlayer(Emote emote) { this.emote=emote; }
     /** Resume tracking without replaying old sounds or freezing the animation. */
     public void seek(double seconds) {
         if(!Double.isFinite(seconds)||seconds<0)throw new IllegalArgumentException("Invalid elapsed time");
-        elapsed=seconds;previous=seconds;frozen=Double.NaN;stopTime=Double.NaN;
+        elapsed=elapsedBase=seconds;elapsedTicks=0;previous=seconds;frozen=Double.NaN;stopTime=Double.NaN;
         if(elapsed>=emote.totalLength()) { frozen=emote.totalLength();stopTime=emote.totalLength(); }
     }
     /** Resource reload replaces definitions without replaying already emitted sound events. */
@@ -20,11 +22,13 @@ public final class EmotePlayer {
         var next=new EmotePlayer(definition);next.seek(elapsed);return next;
     }
     public Emote emote() { return emote; }
-    public void freeze(double seconds) { frozen=seconds; elapsed=Math.max(BLEND_SECONDS,seconds); }
+    public void freeze(double seconds) { frozen=seconds; elapsed=elapsedBase=Math.max(BLEND_SECONDS,seconds);elapsedTicks=0; }
     public void stop() { if(Double.isNaN(stopTime)) { frozen=timeline(0); stopTime=elapsed; } }
     public boolean stopping() { return !Double.isNaN(stopTime); }
     public void tick() {
-        elapsed+=.05;
+        // Count ticks from an anchor rather than accumulating .05 rounding
+        // error, which would select the pre value at e.g. tick 44 (2.20 s).
+        elapsedTicks++;elapsed=clock(0);
         if(Double.isNaN(frozen)&&elapsed>=emote.totalLength()) {
             frozen=emote.totalLength(); stopTime=emote.totalLength();
         }
@@ -36,12 +40,16 @@ public final class EmotePlayer {
     }
     public boolean finished() { return stopping() && elapsed-stopTime>=BLEND_OUT_SECONDS-1e-9; }
     /** Props disappear immediately on stop; only the player pose blends back to vanilla. */
-    public boolean propsVisible(double partialTicks) { return elapsed+partialTicks/20<endTime() && weight(partialTicks)>0; }
-    private double timeline(double partialTicks) { return Double.isNaN(frozen)?elapsed+partialTicks/20:frozen; }
+    public boolean propsVisible(double partialTicks) { return clock(partialTicks)<endTime() && weight(partialTicks)>0; }
+    // Add in tick units before dividing: 43 ticks + partial=1 must be
+    // exactly the same sample as tick 44, including after seek/rebind.
+    private double clock(double partialTicks) { return (elapsedBase*20+elapsedTicks+partialTicks)/20; }
+    private double timeline(double partialTicks) { return Double.isNaN(frozen)?clock(partialTicks):frozen; }
     public Emote.Segment segment(double partialTicks) { return emote.segment(timeline(partialTicks)); }
     public double time(double partialTicks) { return segment(partialTicks).time(); }
     public double weight(double partialTicks) {
-        double now=elapsed+partialTicks/20,end=endTime();
+        double now=clock(partialTicks),end=endTime();
+        if(now-end>=BLEND_OUT_SECONDS-1e-9)return 0;
         // Cancel during entry from the current weight; entry must not keep
         // increasing while the pose is already fading out.
         return Math.min(1,Math.min(now,end)/BLEND_SECONDS)*Math.max(0,Math.min(1,1-(now-end)/BLEND_OUT_SECONDS));

@@ -238,3 +238,18 @@ Gradle artifacts, Minecraft screenshots or multiplayer run. Offline checks:
 61 Java tests, 35 Python tests, four-target javac, 42 valid emotes / 0 errors,
 47 runtime payloads matching delivered bytes/MD5. Parent must review full
 107-shot / 77-check or quick 46-shot / 50-check evidence before publication.
+
+## E10 — final delivery (2026-11-10)
+
+This entry supersedes E9's v4 pin and shot counts. Store drafts now list all 42
+emotes by their shipped categories: 41 by Blockato + Stretch. All 47 animator
+runtime files match the current delivery bytes/MD5, including Floss v2 and Sword
+Salute v2. Credits include both props; the 32×32 sword texture is provisional.
+Screenshot slots explicitly remain placeholders; no new game images were made.
+
+Offline checks: 69 Java tests, 38 Python tests, four-target javac, 42 valid emotes
+and 47 exact runtime payload matches. Full harness plan is 115 shots / 103 checks;
+quick 46 / 51; sword-only 10 / 27. These are planned counts, not game results.
+The parent reported E8 Fabric 1.21.11 59/0 + 87 shots; that predates this update.
+Follow ../RELEASE_CHECKLIST.md before publishing and use ../BLOCKATO_FINAL.md
+for the final runtime hash manifest. No publishing/uploading occurred in E10.

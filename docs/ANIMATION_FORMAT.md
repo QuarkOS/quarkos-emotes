@@ -2,12 +2,13 @@
 
 The runtime reads numeric Blockbench Bedrock animations (`format_version`
 `1.8.0`), without executable Molang. There are exactly **42 built-ins**:
-41 emotes by **Blockato**, batches 1–4, plus stretch. Two companion chain clips
-are additional files, never additional IDs. The authoritative contract is
-`NOTES_v4.md`, `RENAMES.md` and `md5_delivered.txt`; the arrived sword prop is included and floss retains
-the v4 bytes now archived under `_archive/floss/`. The complete list is in [README](../README.md). Eight main clips loop,
-five main clips hold, and 29 play once. Keep animator exports byte-identical
-and presentation settings in sidecars.
+41 emotes by **Blockato** (final batches 1–4 with v5 revisions), plus stretch.
+Two companion chain clips add files, never IDs. The delivery contract is
+`NOTES_v5.md`, `RENAMES_v2.md`, `alex_recheck_v5.txt` and `md5_delivered.txt`.
+All 47 animator runtime files match the current canonical delivery, including
+Floss v2 and Sword Salute v2. The categorized list is in [README](../README.md).
+Eight main clips loop, five hold, and 29 play once. Keep animator exports
+byte-identical and presentation settings in sidecars.
 
 Sit has ID `quarkos_emotes:sit`, key `animation.emote.sit`, and a 1.10-second
 hold clip. Load **only `sit/sit.animation.json`** (now byte-identical to the
@@ -102,6 +103,10 @@ animator writes each bone's composed **unwrapped Euler rotation** and an
 orbit position offset `G(pivot) − pivot` around a shared centre. Apply those
 channels directly; adding a root transform would apply the movement twice.
 Orbit offsets use Steve's pivots, so these six sidecars set `"arm_pivot": "steve"`.
+The same policy applies to pushups_enter through its main emote. Sword Salute
+also opts in so its root sword and the Alex arm share pivot Y=22. All other
+emotes retain model pivots, following the v5 Alex recheck (sword is the explicit
+exception requested after that report).
 Otherwise Alex's 0.5-pixel pivot difference yields shoulder drift of
 `|(R−I)·(0,0.5,0)|` (0.71 px at 90°, 1 px at 180°). The lying sleep/worm head
 also has an intentional 2-pixel offset to rest at torso height; retain it.
@@ -125,6 +130,25 @@ components are finite numbers; author baked numeric keys instead of Molang.
 present, it supplies both. Before/after the timeline, hold the first incoming
 or last outgoing value. Omitted rotation/position channels supply zero;
 omitted scale supplies one. Omitted bones retain the vanilla pose.
+
+At a key's exact time, use **post** (`t >= key time`), including render partial
+ticks. Before it, interpolate only toward **pre**. Differing pre/post values
+make an instant jump; do not ramp across it. Distinct timestamp spellings that
+parse to the same number (e.g. `"0.25"` and `"0.250"`) merge stably: first pre,
+last post and outgoing mode. Exact duplicate JSON property names are rejected
+by the offline validator; use pre/post instead. Catmull–Rom tangents stop at a
+discontinuity so the other side cannot pull a curve across the jump. Step holds
+the old outgoing value until the next key, then takes that key's post immediately.
+Playback counts 20 Hz ticks from an anchor instead of accumulating 0.05 seconds,
+so the shipped sword switches on tick 5 and off tick 44 without a late frame.
+
+Scale accepts a uniform number or `[x,y,z]`, as a constant, timed value, or
+pre/post value. Omitted scale is `[1,1,1]`. For props, if **any axis has absolute
+scale < 1e-4**, skip the whole bone's cubes before matrix/quad submission; its
+prop children also hide. Negative nonzero scales mirror. Scale-zero props do
+not emit degenerate quads. This prop rule never changes player limb visibility;
+player scale changes only when that player's scale channel is keyed, and an
+explicitly scaled-to-zero player parent also hides its attached props.
 
 The outgoing key's `lerp_mode` controls the next segment: `linear` interpolates
 values, `step` holds the outgoing value, and `catmullrom` uses neighboring
@@ -218,10 +242,17 @@ posed ModelPart transform. The final rendered limb includes blend weight,
 vanilla baseline and the Steve/Alex pivot policy. A rotated body cannot carry
 a right-arm child because the six player bones stay siblings.
 
-The delivered sword uses the older flat convention: no parent and copied
+The delivered sword uses the flat convention: no parent and copied
 right_arm rotation/position tracks. Preserve that export as delivered; adding
 a parent would apply its arm motion twice. A synthetic parented prop is covered
-by tests. Props are temporary visuals, not placed blocks or inventory
+by tests. Its geo bone is `sword`, with no parent and pivot `[-5,22,0]`, exactly
+the Steve right-arm pivot. The shipped scale track pops from 0 to 1 at 0.25 s
+and from 1 to 0 at 2.20 s using pre/post keys. The animator's
+`sword_salute_v2_swordcheck.json` measured Steve drift 0 and Alex drift 0.7918 px
+with the old 21.5 pivot. Our `arm_pivot: "steve"` removes that rotating pivot
+mismatch for Alex; slim cube dimensions remain slim. The 32×32 sword texture
+is the animator's provisional flat-colour artwork and needs visual sign-off.
+Props are temporary visuals, not placed blocks or inventory
 items. Render with the matching PNG using `entityCutout`, entity light and
 hurt overlay. Geometry pivots are absolute Bedrock pixels: apply the animated
 bone transform about that pivot, then each cube's local pivot/rotation.
@@ -282,15 +313,16 @@ The importer matches animation name, filename, then enclosing folders against
 the catalog (ignoring case/separators); ambiguous names and duplicate targets
 are skipped. `--apply` adds new names and updates changed folders from
 `/home/box/blockato/emotes/` by default; `--new` remains a compatibility flag.
-Unchanged runtime files are reported and skipped without writes or backups.
+Every apply recopies the selected runtime files even when unchanged; only
+changed content needs a backup. Each animation, chain and prop file reports
+an MD5 match against `md5_delivered.txt` (when present) and installed bytes;
+a mismatch makes the command fail. Dry runs report source/ledger hashes only.
 New sidecars use a readable literal name, paper icon, fun category and movement
-cancellation; review their presentation before release. Existing sidecars are
-kept (including formatting), unless the source delivers replacement metadata.
-For E9, pass `--include` with the additions and sit refresh in README to
-retain the 32 E8 definitions and add ten emotes. Later revisions of retained
-emotes (for example v5 floss) are outside this v4 content run. Omit it to import
-all delivered names. Strict filename discovery handles sit exactly like every
-other folder. Conflicting duplicate targets remain errors.
+cancellation; review presentation before release. Existing sidecars are kept
+(including formatting), unless the source delivers replacement metadata.
+Omit `--include` to refresh the complete final set. The importer excludes
+`_archive/`, `rig/` and `tools/`; strict filename discovery handles all emote
+folders uniformly. Conflicting duplicate targets remain errors.
 
 It preserves animation and bone names, numeric channels, loop modes and sounds.
 Single-animation files copy byte-for-byte; multi-animation documents split

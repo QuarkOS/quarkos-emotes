@@ -74,27 +74,34 @@ def timed_items(value, length, where):
     for key, item in value.items():
         require(isinstance(key, str) and TIME.fullmatch(key), f"{where}: invalid time {key!r}")
         time = float(key)
-        require(math.isfinite(time) and previous < time <= length,
-                f"{where}: times must increase strictly and stay in [0, {length}] ({key})")
+        require(math.isfinite(time) and previous <= time <= length,
+                f"{where}: times must not decrease and must stay in [0, {length}] ({key})")
         previous = time
         yield key, item
 
 
 def channel(value, length, where):
+    def vector(value, label):
+        if where.endswith(".scale") and number(value):
+            return
+        vec3(value, label)
+    if number(value):
+        vector(value, where)
+        return 1
     if isinstance(value, list):
-        vec3(value, where)
+        vector(value, where)
         return 1
     count = 0
     for time, frame in timed_items(value, length, where):
         label = f"{where}@{time}"
-        if isinstance(frame, list):
-            vec3(frame, label)
+        if isinstance(frame, list) or number(frame):
+            vector(frame, label)
         else:
             obj(frame, label, allowed={"pre", "post", "lerp_mode"})
             require("pre" in frame or "post" in frame, f"{label}: expected pre or post")
             for side in ("pre", "post"):
                 if side in frame:
-                    vec3(frame[side], label + "." + side)
+                    vector(frame[side], label + "." + side)
             require(frame.get("lerp_mode", "linear") in ("linear", "catmullrom", "step"),
                     f"{label}: unknown lerp_mode")
         count += 1

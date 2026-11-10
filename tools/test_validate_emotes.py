@@ -97,10 +97,19 @@ class ValidatorTests(unittest.TestCase):
         self.assertEqual({r[0] for r in rows if r[2] == "hold_on_last_frame"}, {"quarkos_emotes:"+n for n in ("sit", "sleep", "kneel", "lay_down", "meditate")})
         for name in expected - {"stretch"}:
             side = validator.read_json(validator.BUILTINS / name / (name+".quarkos.json"))
-            self.assertEqual(side.get("arm_pivot", "model"), "steve" if name in {"backflip", "spin", "worm", "sleep", "lay_down", "pushups"} else "model")
+            self.assertEqual(side.get("arm_pivot", "model"), "steve" if name in {"backflip", "spin", "worm", "sleep", "lay_down", "pushups", "sword_salute"} else "model")
         names = validator.read_json(validator.LANG)
         for row in rows:
             self.assertIn(row[5], names)
+
+    def test_scalar_scale_pre_post_and_equal_numeric_times(self):
+        for scale in (0, 1, [1, 0, 1], {"0": 0, "0.25": {"pre": 0, "post": 1}, "0.250": 1}):
+            data = export()
+            data["animations"]["animation.player.wave"]["bones"]["right_arm"]["scale"] = scale
+            validator.validate_data(data, "wave.animation.json")
+        data["animations"]["animation.player.wave"]["bones"]["right_arm"]["scale"] = "bad"
+        with self.assertRaises(validator.Invalid):
+            validator.validate_data(data, "wave.animation.json")
 
     def test_bad_sidecar_sound_time_and_type_rejected(self):
         side_path = self.folder / "tableflip.quarkos.json"

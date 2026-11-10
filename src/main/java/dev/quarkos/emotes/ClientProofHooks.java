@@ -8,6 +8,8 @@ public final class ClientProofHooks {
         void record(int entity,boolean changed);
         void recordHand(boolean changed);
         void rotation(int entity,float x,float y);
+        void prop(int entity,String bone);
+        void propPass(int entity);
         String model();
         void capture();
         float distance();float drop();float orbit();float forward();
@@ -26,6 +28,8 @@ public final class ClientProofHooks {
     public static void record(int entity,boolean changed) {if(enabled())support().record(entity,changed);}
     public static void recordHand(boolean changed) {if(enabled())support().recordHand(changed);}
     public static void rotation(int entity,float x,float y) {if(visual())support().rotation(entity,x,y);}
+    public static void prop(int entity,String bone) {if(visual())support().prop(entity,bone);}
+    public static void propPass(int entity) {if(visual())support().propPass(entity);}
     public static String model() {return visual()?support().model():"";}
     public static void capture() {if(enabled())support().capture();}
     public static float distance() {return visual()?support().distance():4;}

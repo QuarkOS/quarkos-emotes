@@ -158,7 +158,7 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("invalid file", report)
         self.assertIn("invalid animation", report)
-        self.assertIn("1 JSON files without animations ignored", report)
+        self.assertIn("0 JSON files without animations ignored", report)
         self.assertEqual(json.loads((self.output / "wave/wave.quarkos.json").read_text()), self.metadata)
         self.assertFalse((self.output / "bad/bad.animation.json").exists())
 
@@ -336,6 +336,35 @@ class ImportTests(unittest.TestCase):
         self.assertTrue((self.output / "backflip/backflip.animation.json").exists())
         self.assertFalse((self.output / "later").exists())
         self.assertIn("outside --include selection", report)
+
+    def test_md5_ledger_and_recopy_unchanged_exports(self):
+        import hashlib
+        source = self.write(self.source / "wave/wave.animation.json", export())
+        digest = hashlib.md5(source.read_bytes()).hexdigest()
+        ledger = self.source / "md5_delivered.txt"
+        ledger.write_text(f"{digest}  wave/wave.animation.json\n")
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertIn("MD5: 1/1", report)
+        target = self.output / "wave/wave.animation.json"
+        # The complete current delivery is recopied even on repeated apply.
+        import os
+        os.utime(target, (1, 1))
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertGreater(target.stat().st_mtime, 1)
+        self.assertEqual(target.read_bytes(), source.read_bytes())
+        ledger.write_text("0" * 32 + "  wave/wave.animation.json\n")
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 1)
+        self.assertIn("MD5 FAIL", report)
+
+    def test_reference_rigs_and_tools_never_imported(self):
+        for folder in ("rig", "tools", "_archive"):
+            self.write(self.source / folder / "wave/wave.animation.json", export())
+        code, report = self.run_cli("--apply")
+        self.assertEqual(code, 0, report)
+        self.assertIn("No animation exports found", report)
 
     def test_empty_wip_directory_is_successful(self):
         self.write(self.source / "rig" / "player.geo.json", {"minecraft:geometry": []})

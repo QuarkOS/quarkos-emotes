@@ -19,6 +19,9 @@ public final class PropAttachment {
     public static void draw(int entityId,float partial,HumanoidModel<?> model,PoseStack pose,Drawer drawer) {
         var playback=EmotesClient.entity(entityId);if(playback==null||!playback.propsVisible(partial)||playback.emote().prop()==null||!playback.emote().props().isEmpty())return;
         var prop=playback.emote().prop();
+        String propBone=prop.has("bone")?BedrockAxes.bone(prop.get("bone").getAsString()):"prop";
+        var sampled=playback.pose(partial).get(propBone);
+        if(sampled!=null&&PropGeometry.hidden(sampled.scale()))return;
         pose.pushPose();
         try {
             String bone=prop.has("bone")?BedrockAxes.bone(prop.get("bone").getAsString()):"prop";

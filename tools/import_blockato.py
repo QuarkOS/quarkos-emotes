@@ -9,6 +9,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import json
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -145,6 +146,8 @@ def plan_import(source, output, allow_new=True, backup_root=BACKUPS, include=Non
     entries = []
     ignored = 0
     for path in sorted(source.rglob("*.json")):
+        if any(part in {"_archive", "rig", "tools"} for part in path.relative_to(source).parts[:-1]):
+            continue
         # Do not re-ingest output/backups if they happen to be inside the intake.
         if output.resolve() in path.resolve().parents or backup_root.resolve() in path.resolve().parents:
             continue
@@ -254,7 +257,7 @@ def write_entry(entry, output, backup):
     folder = output / entry.emote_id
     target = folder / (entry.emote_id + ".animation.json")
     prior = entry.target
-    if prior is not None:
+    if prior is not None and entry.status != "unchanged":
         # Back up the complete old runtime folder (or flat animation + sidecar).
         originals = [prior, prior.with_name(validator.stem(prior) + ".quarkos.json")]
         if prior.parent != output:
@@ -302,6 +305,37 @@ def print_report(entries, dry_run):
         print("  ".join(value.ljust(width) for value, width in zip(row, widths)))
 
 
+def md5_report(entries, source, output, applied):
+    """Check delivered bytes against the ledger and, on apply, installed bytes."""
+    ledger_file = source / "md5_delivered.txt"
+    ledger = {}
+    if ledger_file.is_file():
+        for line in ledger_file.read_text().splitlines():
+            digest, name = line.split(maxsplit=1)
+            ledger[name.strip().removeprefix("*")] = digest
+    matches = total = 0
+    for entry in entries:
+        if entry.document is None:
+            continue
+        for original in [entry.source, *assets(entry.source.parent), *validator.companions(entry.source)]:
+            if original == entry.source and validator.read_json(original) != entry.document:
+                print(f"MD5 SPLIT {original.relative_to(source)} (multi-animation export; separate output)")
+                continue
+            total += 1
+            relative = original.relative_to(source).as_posix()
+            digest = hashlib.md5(original.read_bytes()).hexdigest()
+            target = output / entry.emote_id / (entry.emote_id + ".animation.json" if original == entry.source else original.name)
+            ledger_ok = not ledger_file.is_file() or ledger.get(relative) == digest
+            bytes_ok = not applied or target.is_file() and target.read_bytes() == original.read_bytes()
+            ok = ledger_ok and bytes_ok
+            matches += ok
+            print(f"MD5 {'MATCH' if ok else 'FAIL'} {digest} {relative}"
+                  + (" (ledger unavailable)" if not ledger_file.is_file() else "")
+                  + (" (source preview)" if not applied else ""))
+    print(f"MD5: {matches}/{total} runtime payloads match" + (" delivery and installed bytes" if applied else " delivery (preview)"))
+    return matches == total
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", nargs="?", type=Path, default=SOURCE,
@@ -327,7 +361,7 @@ def main(argv=None):
     backup = args.backup_dir / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     if args.apply:
         for entry in entries:
-            if entry.document is not None and entry.status != "unchanged":
+            if entry.document is not None:
                 try:
                     write_entry(entry, args.output_dir, backup)
                 except (OSError, ValueError) as error:
@@ -341,9 +375,10 @@ def main(argv=None):
         print("No animation exports found; work-in-progress folders are OK.")
     if args.apply and backup.exists():
         print(f"Replacement backups: {backup}")
+    hashes_ok = md5_report(entries, args.source, args.output_dir, args.apply)
     print("\nvalidate_emotes.py: candidates checked in memory; checking existing output files:")
     validation = validator.main([str(args.output_dir)]) if any(args.output_dir.rglob("*.json")) else 0
-    return int(bool(validation or any(entry.error for entry in entries)))
+    return int(bool(validation or not hashes_ok or any(entry.error for entry in entries)))
 
 
 if __name__ == "__main__":

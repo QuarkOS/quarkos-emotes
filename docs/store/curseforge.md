@@ -1,68 +1,63 @@
 # QuarkOS Emotes
 
-Wave hello, react with a facepalm or celebrate with a dance. QuarkOS Emotes
-is an editable Minecraft player-emote project by **Emilio Schwaiger / QuarkOS**.
+Wave, react, dance and pose with **42 built-in emotes**: **41 by Blockato**
+plus Stretch, our original. Created by **Emilio Schwaiger / QuarkOS**.
 
-**Release draft:** targets Minecraft **1.21.1 and 1.21.11**, **Fabric and Forge**,
-with Java **21+**. The parent verified the builds before the latest animator
-integration; another build and visual/multiplayer review are required before
-publication. This draft does not announce a published download.
+**Release draft, version 1.0.0:** Minecraft **1.21.1 / 1.21.11**, **Fabric / Forge**,
+Java **21+**, MIT. Final artifacts and compatibility still require the
+[release checklist](../RELEASE_CHECKLIST.md). No download is announced here.
 
-## Forty-two built-in emotes
+## Final emote list
 
-The set contains **42 emotes** (32 from E1–E8 + 10 batch-4 additions):
+| Category | Emotes |
+| --- | --- |
+| Greeting (8) | `bow`, `clap`, `heart_hands`, `point`, `salute`, `sword_salute`, `wave`, `wave_big` |
+| Reaction (12) | `cheer`, `cry`, `facepalm`, `jump_hype`, `laugh`, `no`, `rage`, `shrug`, `slow_clap`, `thinking`, `victory`, `yes` |
+| Dance (8) | `bigdance`, `default_dance`, `drums`, `floss`, `groove`, `guitar`, `worm`, `zombie_walk` |
+| Pose (9) | `kneel`, `lay_down`, `meditate`, `pushups`, `sit`, `sit_full`, `sleep`, `stretch`, `tpose` |
+| Fun (5) | `backflip`, `dab`, `fishing_cast`, `spin`, `tableflip` |
 
-`wave`, `thinking`, `clap`, `tableflip`, `facepalm`, `groove`, `bigdance`, `cheer`, `bow`, `salute`, `laugh`, `shrug`, `point`, `dab`, `sit_full`, `stretch`, `yes`, `no`, `cry`, `rage`, `victory`, `heart_hands`, `wave_big`, `backflip`, `spin`, `worm`, `floss`, `tpose`, `zombie_walk`, `slow_clap`, `sleep`, `sit`, `jump_hype`, `fishing_cast`, `sword_salute`, `guitar`, `drums`, `pushups`, `default_dance`, `kneel`, `lay_down`, `meditate`.
+Eight dances/actions loop: Groove, Bigdance, Floss, Zombie Walk, Guitar, Drums,
+Pushups and Default Dance. Pushups enters the plank once before looping.
+Sit, Sleep, Kneel and Lay Down hold until cancelled; Meditate sits then repeats
+a breathing loop. Sit Full plays its complete sequence once. The other 29
+main clips play once. Both chain clips belong to existing emote IDs.
 
-Groove, bigdance, floss, zombie_walk, guitar, drums, pushups and default_dance
-loop with smooth Catmull–Rom seams. Pushups plays its 1.3-second stand-to-plank
-entry once before the 2-second loop. Sit, sleep, kneel and lay_down hold their
-last frame; meditate plays its 5.6-second main clip then loops a 2-second breath.
-Chains share one emote ID and resume the correct segment/phase for late viewers.
-Handoffs have no blend; entry blends for 0.15 seconds and cancel/natural end
-fades over 0.2 seconds. Sit_full retains the complete four-second sequence.
-The other 29 emotes play once. Backflip and spin preserve complete Euler turns.
-Backflip, spin, worm, sleep, lay_down and pushups temporarily use Steve arm
-pivots on slim models. Tableflip includes its textured table; sword_salute now
-includes the delivered textured sword with copied right-arm channels.
-The 41 Blockato emotes plus two companion chain clips and both prop pairs
-are copied byte-for-byte from batches 1–4 (`NOTES_v4.md`, `RENAMES.md`, `md5_delivered.txt`; the arrived sword
-prop is included). Floss retains the v4 bytes now in `_archive/floss/`.
-Stretch is the remaining original emote.
+Tableflip includes a textured table. Sword Salute includes the delivered
+root sword with instant scale visibility (0.25–2.20 seconds); Alex uses its
+matching arm pivot. The provisional flat-colour sword texture needs final
+visual approval. All 47 animator animation/chain/prop files match the final
+delivery bytes and MD5, including Floss v2 and Sword Salute v2.
 
-The wheel offers categories, paging, search and favorites, with settings for sound,
-movement cancellation and first-person behavior. The flat player rig uses classic/slim pivots, with a temporary Steve arm-pivot
-option for whole-body orbit emotes. In-game appearance still needs review.
+The wheel supports categories, paging, search and favorites. Settings include
+sound, movement cancellation and first-person behavior. Numeric Bedrock
+Blockbench animations can be edited through resource packs or local config;
+see the [format guide](../ANIMATION_FORMAT.md). No animation library is required.
 
-## Editable content
+## Compatibility
 
-Use numeric Bedrock/Blockbench `.animation.json` files in resource packs or
-`config/quarkos_emotes/emotes/`. Flat and folder layouts are supported.
-A folder loads only `<folder>.animation.json`, optional `<folder>_enter.animation.json`
-and `<folder>_loop.animation.json`, prop pairs and `<folder>.quarkos.json`. Folders
-starting with `_` and all proof/authoring files are ignored. Props may parent
-to a player bone or stay at the player root. Folder props use `.geo.json` plus matching `.png` files; metadata may live
-in `<name>.quarkos.json`, preserving the exported animation. The repository
-includes a format guide, an offline validator and an importer with preview
-and replacement backups. Import new/changed animator folders with
-`python3 tools/import_blockato.py --apply`; sidecars are preserved. Use
-`--include` to pin a batch when later deliveries coexist (see README).
+**Client required; server optional.** Local emotes work on the client. Shared
+playback needs compatible server synchronization and a shared animation set;
+a client install alone does not animate other players on vanilla servers.
+Use the artifact for your exact loader and game version. Confirm final loader
+dependencies and dedicated-server behavior before publishing.
 
-## Compatibility and shared playback
+## Screenshot slots — pending final captures
 
-Use the artifact matching your exact game version and loader. Environment:
-**client required, server optional**. Local emotes work on the client; shared
-playback needs compatible server synchronization and a shared animation set.
-Client installation alone does not make vanilla-server viewers see emotes.
-Final dependency and multiplayer instructions follow release verification.
+| Slot | Required capture | Status |
+| --- | --- | --- |
+| Cover | Wheel with readable categories/search | Placeholder; no image selected |
+| Actions | Steve/Alex backflip, worm and Floss v2 | Placeholder; new Floss capture required |
+| Sword | Steve/Alex front, side and ¾ at 0.8 s | Placeholder; grip/texture review required |
+| Sword visibility | Both skins at 0.249 s with no sword | Placeholder; harness assertion required |
+| Poses | Sit, Sleep, Kneel, Lay Down held; Meditate breathing | Placeholder; final-set review required |
+| Controls | Settings and first-person/camera views | Placeholder; release-sized UI capture required |
 
-## Screenshots pending
+The parent reported E8 Fabric 1.21.11: 59/0 checks and 87 screenshots, including
+Steve/Alex backflip/worm/floss and spin/sleep/sit. That evidence predates this
+final set. E10 offline checks do not establish the new sword/Floss appearance.
 
-Capture every emote front/¾, Steve/Alex backflip/worm/floss, backflip/worm
-side views, pushups/meditate in their loop segments, held sit/sleep/kneel/lay_down,
-first-person sleep, wheel and settings. Test Steve and Alex, prop textures
-and floor placement, cancellation and first-person view before selecting images.
-
-**Project:** Emilio Schwaiger / QuarkOS · **Animator:** Blockato (41 emotes, batches 1–4)
-· **License:** MIT · **Version:** 1.0.0 (release preparation).
-Vanilla item/sound assets come from the user's Minecraft installation.
+**Credits:** Emilio Schwaiger / QuarkOS (project); Blockato (all 41 animator
+emotes, chain clips and both props); Stretch authored with Codex assistance.
+Vanilla items/sounds resolve from the user's Minecraft installation.
+Independent project; not affiliated with Mojang or Microsoft.

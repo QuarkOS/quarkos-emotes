@@ -22,6 +22,8 @@ public final class ClientHarness {
     private static boolean queued,moved,summary,optionsReady,handMoved;
     private static boolean restoringCamera,chainSwitched;
     private static String chainFrom;
+    private static final Set<String> renderedProps=new HashSet<>();
+    private static boolean propPass;
     private static final boolean QUICK=Boolean.getBoolean("quarkos_emotes.quick");
     private static int restoreTicks;
     private static double bodyX,bodyY;
@@ -84,6 +86,14 @@ public final class ClientHarness {
     }
     public static boolean active() { return Boolean.getBoolean("quarkos_emotes.harness"); }
     public static void recordHand(boolean changed) { MultiplayerHarness.recordHand(changed);if(active())handMoved|=changed; }
+    public static void prop(int entity,String bone) {
+        var mc=Minecraft.getInstance();
+        if(active()&&mc.player!=null&&entity==mc.player.getId())renderedProps.add(bone);
+    }
+    public static void propPass(int entity) {
+        var mc=Minecraft.getInstance();
+        if(active()&&mc.player!=null&&entity==mc.player.getId())propPass=true;
+    }
     public static void record(int entity,boolean changed) {
         MultiplayerHarness.record(entity,changed);
         var mc=Minecraft.getInstance(); if(active()&&mc.player!=null&&mc.player.getId()==entity) moved|=changed;
@@ -153,6 +163,11 @@ public final class ClientHarness {
             String name=e.id().split(":",2)[1].replace('/','_');
             boolean all=only.contains("")||only.contains(name)||only.contains(e.id())||only.contains("emote-"+name);
             if(all) list.add(new Shot("emote-"+name,e.id(),CameraType.THIRD_PERSON_FRONT,""));
+            if(!QUICK&&name.equals("sword_salute"))for(String rig:List.of("steve","alex"))
+                for(String view:List.of("front","side","34","hidden")) {
+                    String variant="emote-"+name+"-"+view+"-"+rig;
+                    if(all||only.contains(variant))list.add(new Shot(variant,e.id(),CameraType.THIRD_PERSON_FRONT,view));
+                }
             if(!QUICK&&(all||only.contains("emote-"+name+"-34"))) list.add(new Shot("emote-"+name+"-34",e.id(),CameraType.THIRD_PERSON_FRONT,"34"));
             if(!QUICK&&Set.of("backflip","worm","floss").contains(name))for(String model:List.of("steve","alex")) {
                 String variant="emote-"+name+"-"+model;
@@ -196,7 +211,7 @@ public final class ClientHarness {
             restoringCamera=false;index++;wait=0;ticks=0;return;
         }
         if(wait==0) {
-            moved=false;handMoved=false;queued=false;bodyX=bodyY=0;mc.setScreen(null);
+            moved=false;handMoved=false;queued=false;bodyX=bodyY=0;renderedProps.clear();propPass=false;mc.setScreen(null);
             model=shot.name().endsWith("-alex")?"alex":"steve";
             portraitOrbit=shot.ui().equals("side")?90:shot.ui().equals("34")?35:0;
             portraitDistance=2.85f;portraitDrop=.65f;portraitForward=0;
@@ -219,7 +234,7 @@ public final class ClientHarness {
                 if(p.emote().enter()!=null||p.emote().followLoop()!=null) {
                     double boundary=p.emote().enter()!=null?p.emote().entryLength():p.emote().length();
                     p.seek(boundary-.1);chainFrom=p.segment(0).name();
-                } else p.freeze(shot.ui().equals("90")?.63:
+                } else p.freeze(shot.ui().equals("hidden")?.249:shot.ui().equals("90")?.63:
                         p.emote().loop()==Emote.Loop.HOLD?p.emote().length()+1:poseTime(p.emote()));
             }
             // F1 also hides the first-person hands. Keep the normal HUD for that evidence shot.
@@ -256,6 +271,13 @@ public final class ClientHarness {
             check(shot.name()+"-model",slim==model.equals("alex"),"forced_skin_and_model="+model);
         }
         var playback=EmotesClient.player(mc.player.getUUID());
+        if(shot.id().equals("quarkos_emotes:sword_salute")) {
+            boolean expected=!shot.ui().equals("hidden");
+            boolean visible=playback!=null&&playback.emote().props().stream().anyMatch(g->g.bones().stream()
+                    .anyMatch(b->b.name().equals("sword")&&g.visible(b,playback,0)));
+            check(shot.name()+"-prop",propPass&&visible==expected&&renderedProps.contains("sword")==expected,
+                    "expected_visible="+expected+"_sampled="+visible+"_submitted="+renderedProps.contains("sword")+"_render_pass="+propPass);
+        }
         if(chainFrom!=null)check(shot.name()+"-chain",chainSwitched&&playback!=null&&playback.weight(0)==1,
                 "segment_switched_without_blend");
         if(Set.of("quarkos_emotes:sit","quarkos_emotes:sleep","quarkos_emotes:kneel","quarkos_emotes:lay_down").contains(shot.id()))

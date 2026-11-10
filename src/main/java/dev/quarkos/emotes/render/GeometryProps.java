@@ -45,9 +45,11 @@ public final class GeometryProps {
     public static void draw(int entityId,float partial,net.minecraft.client.model.HumanoidModel<?> model,PoseStack pose,Drawer drawer) {
         var player=EmotesClient.entity(entityId);
         if(player==null||!player.propsVisible(partial))return;
+        dev.quarkos.emotes.ClientProofHooks.propPass(entityId);
         // Preserve authored prop trajectories/pivots; scaling flip angles during exit could dip below the floor.
         double weight=1;
         for(var geo:player.emote().props())for(var bone:geo.bones()) {
+            if(!geo.visible(bone,player,partial))continue;
             pose.pushPose();
             try {
                 // LivingEntityRenderer has already applied body yaw and the model-space Y flip.
@@ -58,6 +60,7 @@ public final class GeometryProps {
                     pose.pushPose();
                     try {
                         pivot(pose,cube.pivot(),cube.rotation(),Vec3.ZERO,Vec3.ONE);
+                        dev.quarkos.emotes.ClientProofHooks.prop(entityId,bone.name());
                         drawer.draw(model(cube,geo),Identifier.parse(geo.texture()),pose);
                     } finally {pose.popPose();}
                 }
