@@ -106,6 +106,13 @@ if (minecraftVersion == "forge" || forgeNode == null) {
     tasks.named("compileJava") { dependsOn("stonecutterGenerate") }
     tasks.named("processResources") { dependsOn("stonecutterGenerate") }
     apply(from = rootProject.file("gradle/mp-runs.gradle.kts"))
+    // Forge dev runs turn every classes directory into its own module; a separate "proof" directory became module
+    // "proof" and its ClientProofSupport could not be cast to the main module's hook interface. Compile proof classes
+    // into main's classes directory for dev runs (one module); the jar task below excludes the harness package.
+    gradle.projectsEvaluated {
+        val proofSet = sourceSets.named("proof").get()
+        proofSet.java.destinationDirectory.set(mainSource.get().java.destinationDirectory)
+    }
 
     runs.register("client") {
         mods {
