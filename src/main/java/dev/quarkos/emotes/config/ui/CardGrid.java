@@ -32,7 +32,7 @@ public final class CardGrid extends AbstractWidget {
 
     public CardGrid(GridLayout geometry, CardPainter painter, IntConsumer select, IntConsumer favorite, Runnable playSelected) {
         super(geometry.library().x(), geometry.library().y(), geometry.library().w(), geometry.library().h(),
-                Ui.text("library"));
+                Ui.tr("library"));
         this.layout = geometry.cards();
         this.painter = painter;
         this.select = select;

@@ -21,7 +21,7 @@ public final class Ui {
 
     private Ui() {}
 
-    public static Component text(String key, Object... args) {
+    public static Component tr(String key, Object... args) {
         return Component.translatable("text.quarkos_emotes." + key, args);
     }
 

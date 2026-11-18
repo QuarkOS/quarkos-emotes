@@ -12,12 +12,12 @@ public final class StarToggle extends FlatButton {
     private final BooleanSupplier starred;
 
     public StarToggle(Font font, Box box, BooleanSupplier starred, Runnable action) {
-        super(font, box, Ui.text("favorite"), action);
+        super(font, box, Ui.tr("favorite"), action);
         this.starred = starred;
     }
 
     @Override public Component getMessage() {
-        return Ui.text(starred.getAsBoolean() ? "unfavorite" : "favorite");
+        return Ui.tr(starred.getAsBoolean() ? "unfavorite" : "favorite");
     }
 
     public static Box cardBounds(Box card) {
@@ -41,7 +41,7 @@ public final class StarToggle extends FlatButton {
             glyph(g, font, box, on);
         } else {
             glyph(g, font, new Box(box.x() + 5, box.y(), SIZE, box.h()), on);
-            Ui.label(g, font, Ui.text(on ? "favorited" : "favorite"),
+            Ui.label(g, font, Ui.tr(on ? "favorited" : "favorite"),
                     new Box(box.x() + 22, box.y(), box.w() - 26, box.h()), Ui.TEXT);
         }
     }

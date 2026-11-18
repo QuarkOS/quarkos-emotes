@@ -85,7 +85,7 @@ public final class EmoteConfigScreen extends Screen {
                     config.holdWheel = i == 0;
                     persist();
                 });
-        segmented(geometry.row(wheel, 1), "wheel_content", List.of(Ui.text("favorites"), Ui.text("all")),
+        segmented(geometry.row(wheel, 1), "wheel_content", List.of(Ui.tr("favorites"), Ui.tr("all")),
                 () -> config.wheelFavoritesOnly ? 0 : 1, i -> {
                     config.wheelFavoritesOnly = i == 0;
                     persist();
@@ -93,7 +93,7 @@ public final class EmoteConfigScreen extends Screen {
 
         Box reset = geometry.row(wheel, 2);
         rows.add(new Row(reset, "reset_favorites", 0));
-        clearFavorites = addRenderableWidget(new FlatButton(font, rightControl(reset, 114), Ui.text("reset_favorites"), this::clearFavorites));
+        clearFavorites = addRenderableWidget(new FlatButton(font, rightControl(reset, 114), Ui.tr("reset_favorites"), this::clearFavorites));
         clearFavorites.active = !config.favorites.isEmpty();
         confirmUntil = 0;
 
@@ -140,7 +140,7 @@ public final class EmoteConfigScreen extends Screen {
             persist();
         } else {
             confirmUntil = now + 3_000_000_000L;
-            clearFavorites.setMessage(Ui.text("confirm_clear"));
+            clearFavorites.setMessage(Ui.tr("confirm_clear"));
         }
     }
 
@@ -148,7 +148,7 @@ public final class EmoteConfigScreen extends Screen {
         EmoteConfig.save();
         saveIn = 0;
         confirmUntil = 0;
-        if (clearFavorites != null) clearFavorites.setMessage(Ui.text("reset_favorites"));
+        if (clearFavorites != null) clearFavorites.setMessage(Ui.tr("reset_favorites"));
     }
 
     private void updatePreview() {
@@ -171,7 +171,7 @@ public final class EmoteConfigScreen extends Screen {
         if (saveIn > 0 && --saveIn == 0) persist();
         if (confirmUntil != 0 && System.nanoTime() >= confirmUntil) {
             confirmUntil = 0;
-            clearFavorites.setMessage(Ui.text("reset_favorites"));
+            clearFavorites.setMessage(Ui.tr("reset_favorites"));
         }
         updatePreview();
         motion.tick();
@@ -222,15 +222,15 @@ public final class EmoteConfigScreen extends Screen {
     private void renderPreview(GuiGraphics g, float partial) {
         Box panel = geometry.preview();
         Ui.panel(g, panel, Ui.PANEL, Ui.BORDER);
-        Ui.label(g, font, Ui.text("preview"), new Box(portrait.x(), panel.y() + 3, portrait.w(), 15), Ui.TEXT);
+        Ui.label(g, font, Ui.tr("preview"), new Box(portrait.x(), panel.y() + 3, portrait.w(), 15), Ui.TEXT);
         Ui.softRect(g, portrait, Ui.WELL);
         if (minecraft.player == null || emote == null) {
-            Ui.center(g, font, Ui.text(minecraft.player == null ? "preview_requires_world" : "empty"), portrait.inset(4), Ui.MUTED);
+            Ui.center(g, font, Ui.tr(minecraft.player == null ? "preview_requires_world" : "empty"), portrait.inset(4), Ui.MUTED);
             return;
         }
         motion.draw(g, portrait.inset(1), minecraft.player, partial, true);
         Ui.center(g, font, EmoteWheelScreen.label(emote), new Box(portrait.x(), portrait.bottom() + 1, portrait.w(), 12), Ui.TEXT);
-        Ui.center(g, font, Ui.text("drag_preview"), new Box(portrait.x(), portrait.bottom() + 12, portrait.w(), 10), Ui.MUTED);
+        Ui.center(g, font, Ui.tr("drag_preview"), new Box(portrait.x(), portrait.bottom() + 12, portrait.w(), 10), Ui.MUTED);
     }
 
     private void drawHelp(GuiGraphics g, int mx, int my) {

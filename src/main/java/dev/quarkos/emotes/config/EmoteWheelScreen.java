@@ -67,15 +67,15 @@ public final class EmoteWheelScreen extends Screen {
                 : new Box(header.right() - 74, header.y(), 74, header.h());
         int titleRight = view == MenuView.WHEEL ? settings.x() - 6 : mode.x() - 8;
         titleBox = new Box(header.x(), header.y(), titleRight - header.x(), header.h());
-        views = new Segmented(font, mode, List.of(Ui.text("wheel"), Ui.text("grid")), view::ordinal,
+        views = new Segmented(font, mode, List.of(Ui.tr("wheel"), Ui.tr("grid")), view::ordinal,
                 this::changeView, this::addRenderableWidget);
-        addRenderableWidget(new FlatButton(font, settings, Ui.text("settings"),
+        addRenderableWidget(new FlatButton(font, settings, Ui.tr("settings"),
                 () -> minecraft.setScreen(new EmoteConfigScreen(this))));
 
         if (view == MenuView.WHEEL) {
             wheel = WheelLayout.of(width, height);
             ring = new WheelRing(wheel, minecraft.getWindow().getGuiScale() >= 4);
-            wheelScope = new Segmented(font, wheel.scope(), List.of(Ui.text("favorites"), Ui.text("all")),
+            wheelScope = new Segmented(font, wheel.scope(), List.of(Ui.tr("favorites"), Ui.tr("all")),
                     () -> EmoteConfig.get().wheelFavoritesOnly ? 0 : 1, this::changeScope, this::addRenderableWidget);
             Box pager = wheel.pager();
             previousPage = addRenderableWidget(pageArrow(new Box(pager.x(), pager.y(), 20, pager.h()), -1));
@@ -91,7 +91,7 @@ public final class EmoteWheelScreen extends Screen {
     @Override protected void setInitialFocus() {}
 
     private FlatButton pageArrow(Box box, int step) {
-        return new FlatButton(font, box, Ui.text(step < 0 ? "previous_page" : "next_page"), () -> changePage(step)) {
+        return new FlatButton(font, box, Ui.tr(step < 0 ? "previous_page" : "next_page"), () -> changePage(step)) {
             @Override protected void paint(GuiGraphics g) {
                 Ui.panel(g, box, isHovered && active ? Ui.RAISED : Ui.CONTROL, edge());
                 Ui.center(g, font, Component.literal(step < 0 ? "‹" : "›"), box, active ? Ui.TEXT : Ui.MUTED);
@@ -197,13 +197,13 @@ public final class EmoteWheelScreen extends Screen {
         ring.render(g, font, minecraft.player, wheelItems, page, hover, slide, EmoteConfig.get().favorites::contains);
         int span = (int) (wheel.innerRadius() * 1.8);
         int cx = wheel.cx(), cy = wheel.cy();
-        Component name = hovered != null ? label(hovered) : wheelItems.isEmpty() ? Ui.text("nothing_on_wheel") : Ui.text("pick_emote");
+        Component name = hovered != null ? label(hovered) : wheelItems.isEmpty() ? Ui.tr("nothing_on_wheel") : Ui.tr("pick_emote");
         boolean hold = releaseToPlay && EmoteConfig.get().holdWheel;
-        Component help = hovered != null ? Ui.text(hold ? "release_to_play" : "click_to_play")
-                : wheelItems.isEmpty() && EmoteConfig.get().wheelFavoritesOnly ? Ui.text("switch_to_all") : Ui.text("number_keys");
+        Component help = hovered != null ? Ui.tr(hold ? "release_to_play" : "click_to_play")
+                : wheelItems.isEmpty() && EmoteConfig.get().wheelFavoritesOnly ? Ui.tr("switch_to_all") : Ui.tr("number_keys");
         if (hovered != null) {
             EmotesClient.selected = hovered.id();
-            if (hold && font.width(help) > span) help = Ui.text("release");
+            if (hold && font.width(help) > span) help = Ui.tr("release");
         }
         renderHubName(g, name, new Box(cx - span / 2, cy - 20, span, 20), hovered != null);
         if (!wheelItems.isEmpty() || EmoteConfig.get().wheelFavoritesOnly) {
@@ -212,7 +212,7 @@ public final class EmoteWheelScreen extends Screen {
 
         wheelScope.render(g);
         renderDots(g);
-        Ui.center(g, font, Ui.text("wheel_help"), wheel.hint(), Ui.MUTED);
+        Ui.center(g, font, Ui.tr("wheel_help"), wheel.hint(), Ui.MUTED);
     }
 
     private void renderHubName(GuiGraphics g, Component name, Box box, boolean hovered) {
@@ -237,7 +237,7 @@ public final class EmoteWheelScreen extends Screen {
         Box pager = wheel.pager();
         int count = WheelLayout.pageCount(wheelItems.size());
         if (count > 8) {
-            Ui.center(g, font, Ui.text("page_number", page + 1, count),
+            Ui.center(g, font, Ui.tr("page_number", page + 1, count),
                     new Box(pager.x() + 22, pager.y(), pager.w() - 44, pager.h()), Ui.MUTED);
             return;
         }

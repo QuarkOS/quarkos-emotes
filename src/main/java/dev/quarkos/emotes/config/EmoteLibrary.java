@@ -61,7 +61,7 @@ final class EmoteLibrary {
         detail = layout.controls();
         int offset = cards == null ? 0 : cards.offset();
 
-        search = new SearchBox(font, layout.search(), Ui.text("search"));
+        search = new SearchBox(font, layout.search(), Ui.tr("search"));
         search.setValue(query);
         search.setResponder(value -> {
             query = value;
@@ -79,20 +79,20 @@ final class EmoteLibrary {
         cards = new CardGrid(layout, this::paintCard, this::select, this::toggleFavorite, () -> play.accept(selected));
         Box library = layout.library();
         clearButton = new FlatButton(font, new Box(library.x() + (library.w() - 96) / 2, library.y() + library.h() / 2 + 4, 96, 18),
-                Ui.text("clear_filters"), this::clearFilters);
+                Ui.tr("clear_filters"), this::clearFilters);
         add.accept(clearButton);
         add.accept(cards);
 
         Box actions = detail.actions();
         int starWidth = actions.w() >= 216 ? (actions.w() - 8) / 3 : 18;
         int playWidth = (actions.w() - starWidth - 8) / 2;
-        playButton = new FlatButton(font, new Box(actions.x(), actions.y(), playWidth, actions.h()), Ui.text("play"),
+        playButton = new FlatButton(font, new Box(actions.x(), actions.y(), playWidth, actions.h()), Ui.tr("play"),
                 true, () -> play.accept(selected));
         starButton = new StarToggle(font, new Box(actions.x() + playWidth + 4, actions.y(), starWidth, actions.h()),
                 () -> selected != null && starred(selected), this::toggleSelectedFavorite);
         int assignX = actions.x() + playWidth + starWidth + 8;
         assignButton = new FlatButton(font, new Box(assignX, actions.y(), actions.right() - assignX, actions.h()),
-                Ui.text("assign"), () -> focusAssignment = true);
+                Ui.tr("assign"), () -> focusAssignment = true);
         add.accept(playButton);
         add.accept(starButton);
         add.accept(assignButton);
@@ -141,8 +141,8 @@ final class EmoteLibrary {
         selected = index < 0 ? null : results.get(index);
         if (selected != null) EmotesClient.selected = selected.id();
         detailMotion.show(selected);
-        cards.update(results.size(), index, Ui.text("library_selection",
-                selected == null ? Ui.text("empty") : EmoteWheelScreen.label(selected)), resetScroll);
+        cards.update(results.size(), index, Ui.tr("library_selection",
+                selected == null ? Ui.tr("empty") : EmoteWheelScreen.label(selected)), resetScroll);
         playButton.visible = starButton.visible = assignButton.visible = selected != null;
         playButton.active = minecraft.player != null;
         updateSlotLabels();
@@ -186,14 +186,14 @@ final class EmoteLibrary {
     private Component slotLabel(int index) {
         var key = EmotesClient.QUICK_SLOTS[index];
         return key.isUnbound() ? Component.literal(Integer.toString(index + 1))
-                : Ui.text("slot_key", index + 1, key.getTranslatedKeyMessage());
+                : Ui.tr("slot_key", index + 1, key.getTranslatedKeyMessage());
     }
 
     private Component assignedName(int index) {
         String id = EmoteConfig.get().slot(index);
         Emote emote = EmoteResources.REGISTRY.get(id);
         if (emote != null) return EmoteWheelScreen.label(emote);
-        return id.isEmpty() ? Ui.text("slot_empty") : Component.literal(id);
+        return id.isEmpty() ? Ui.tr("slot_empty") : Component.literal(id);
     }
 
     void tick() {
@@ -236,13 +236,13 @@ final class EmoteLibrary {
         hoverMotion.show(over);
 
         Box count = layout.count();
-        Ui.center(g, font, results.size() == 1 ? Ui.text("result_one") : Ui.text("result_count", results.size()), count, Ui.MUTED);
+        Ui.center(g, font, results.size() == 1 ? Ui.tr("result_one") : Ui.tr("result_count", results.size()), count, Ui.MUTED);
         Ui.panel(g, layout.library(), Ui.WELL, Ui.BORDER);
         Ui.panel(g, layout.detail(), Ui.PANEL, Ui.BORDER);
         if (results.isEmpty()) {
             Box library = layout.library();
             Component message = filter == Filter.FAVORITES && EmoteConfig.get().favorites.isEmpty()
-                    ? Ui.text("no_favorites") : Ui.text("empty");
+                    ? Ui.tr("no_favorites") : Ui.tr("empty");
             Ui.center(g, font, message, new Box(library.x() + 4, library.y() + library.h() / 2 - 16, library.w() - 8, 14), Ui.MUTED);
         }
         renderDetail(g, partial);
@@ -273,7 +273,7 @@ final class EmoteLibrary {
         Box panel = layout.detail();
         Box portrait = detail.preview();
         if (selected == null) {
-            Ui.center(g, font, Ui.text("choose"), panel.inset(6), Ui.MUTED);
+            Ui.center(g, font, Ui.tr("choose"), panel.inset(6), Ui.MUTED);
             return;
         }
         Ui.heading(g, font, EmoteWheelScreen.label(selected),
@@ -281,26 +281,26 @@ final class EmoteLibrary {
         String categoryKey = "filter.quarkos_emotes." + selected.category();
         Component category = I18n.exists(categoryKey) ? Component.translatable(categoryKey)
                 : Component.literal(EmoteFiles.title(selected.category()));
-        Component mode = Ui.text("loop_" + selected.loop().name().toLowerCase(Locale.ROOT));
+        Component mode = Ui.tr("loop_" + selected.loop().name().toLowerCase(Locale.ROOT));
         Component metadata = category.copy().append(" · ").append(mode);
-        int badge = selected.prop() != null || !selected.props().isEmpty() ? Math.min(font.width(Ui.text("prop")) + 8, portrait.w() / 3) : 0;
+        int badge = selected.prop() != null || !selected.props().isEmpty() ? Math.min(font.width(Ui.tr("prop")) + 8, portrait.w() / 3) : 0;
         Ui.label(g, font, metadata, new Box(portrait.x(), panel.y() + 19, portrait.w() - badge - 4, 12), Ui.MUTED);
         if (badge > 0) {
             Box pill = new Box(portrait.right() - badge, panel.y() + 19, badge, 12);
             Ui.softRect(g, pill, Ui.RAISED);
-            Ui.center(g, font, Ui.text("prop"), pill.inset(1), Ui.TEXT);
+            Ui.center(g, font, Ui.tr("prop"), pill.inset(1), Ui.TEXT);
         }
         Ui.softRect(g, portrait, Ui.WELL);
         if (minecraft.player == null) {
-            Ui.center(g, font, Ui.text("preview_requires_world"), portrait.inset(4), Ui.MUTED);
+            Ui.center(g, font, Ui.tr("preview_requires_world"), portrait.inset(4), Ui.MUTED);
         } else {
             detailMotion.draw(g, portrait.inset(1), minecraft.player, partial, true);
         }
 
         Box assignment = layout.assignment();
         int captionWidth = assignment.w() / 2;
-        Ui.label(g, font, Ui.text("assign_to_slot"), new Box(assignment.x(), assignment.y() - 14, captionWidth, 12), Ui.TEXT);
-        String hint = Ui.trim(font, Ui.text("slot_controls"), captionWidth);
+        Ui.label(g, font, Ui.tr("assign_to_slot"), new Box(assignment.x(), assignment.y() - 14, captionWidth, 12), Ui.TEXT);
+        String hint = Ui.trim(font, Ui.tr("slot_controls"), captionWidth);
         g.drawString(font, hint, assignment.right() - font.width(hint), assignment.y() - 12, Ui.MUTED, false);
     }
 
@@ -309,8 +309,8 @@ final class EmoteLibrary {
         for (int i = 0; i < slots.length; i++) {
             Box slot = layout.slot(i);
             if (!slot.contains(x, y)) continue;
-            Component name = Ui.text("slot_assignment", i + 1, assignedName(i));
-            Component action = Ui.text(isAssigned(i) ? "slot_remove" : "slot_set");
+            Component name = Ui.tr("slot_assignment", i + 1, assignedName(i));
+            Component action = Ui.tr(isAssigned(i) ? "slot_remove" : "slot_set");
             Box library = layout.library();
             int tooltipWidth = Math.min(library.w() - 8, Math.max(font.width(name), font.width(action)) + 12);
             Box box = new Box(Math.clamp(slot.x(), library.x() + 4, library.right() - tooltipWidth - 4),
