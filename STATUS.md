@@ -1,6 +1,10 @@
 # QuarkOS Emotes — STATUS (times Europe/Vienna)
 
-## Where it stands (2026-11-10 02:05)
+Current verification, the multiplayer matrix, lifecycle proof, and store assets
+are in [docs/STATUS.md](docs/STATUS.md). Values still required before a public
+release are in [docs/RELEASE.md](docs/RELEASE.md). Nothing has been published.
+
+## Where it stood at 02:05, before this pass
 - Branch `main`. 42 built-in emotes: 41 by the Blockbench animator "Blockato" (byte-identical to /home/box/blockato/emotes, minus `_archive/`) and `stretch` (written by Sol).
 - Own animation layer, no playerAnimator dependency. Fabric and Forge for 1.21.1 and 1.21.11, built from one Stonecutter source tree.
 - Verified by the parent with real Gradle and xvfb runs:
@@ -52,26 +56,12 @@
     - 01:50 Parent fix (no Krill): Forge dev runs compiled the proof harness into its own module → ClassCastException. Fix in forge/build.gradle.kts (proof classes compile into main's classes dir for dev runs; the jar still excludes dev/quarkos/emotes/harness/**). h8 forge 1.21.11 103/0 (115 shots), forge 1.21.1 103/0 (115 shots). Committed 53ae332.
     - 02:01 Final build of main @53ae332: BUILD SUCCESSFUL, 69/69 unit tests on each of the 4 targets, tools/audit_release.py PASS on all 4 binary jars.
 
-## TODO for follow-up agents (Grok 4.7)
-1. **Multiplayer proof** (`docs/MP_PROOF.md`, `tools/mp_proof.sh`, `tools/check_mp_proof.py`).
-   - Run sync and vanilla modes on all 4 targets when box load is low.
-   - Expected results: actor 4/0, viewer 10/0, vanilla 7/0.
-   - Fix whatever fails.
-2. **Visual polish from the final screenshots** (/workspace/krill-emotes-ops/out/shots/h7 and h8).
-   - Pushups front view is framed too close: the head fills the frame.
-   - Meditate and other low or lying emotes need framing that follows the body's height.
-   - At 1280x720 the wheel is small with lots of empty panel; enlarge the ring for 42 emotes across 6 pages.
-   - The config-screen tooltip overlaps the preview panel.
-   - Check GUI scales 1–4 and window sizes from 854x480 to 2560x1440 (`-PguiScale`).
-3. Go through `docs/RELEASE_CHECKLIST.md` item by item.
-   - Lifecycle cases: respawn, dimension change, reconnect, late joiner mid-loop, F3+T during playback.
-   - Keybind conflicts.
-4. **Stonecutter gotcha:** on 1.21.11 any identifier containing `PlayerRenderer` is rewritten to `AvatarRenderer`. Use `getRenderer(..)` plus a cast.
-5. **Store drafts** in `docs/store/` (Modrinth and CurseForge descriptions, summary, tags, changelog).
-   - Replace the screenshot placeholders with real harness shots.
-   - Add real project and contact URLs.
-   - No publishing without Emilio's approval.
-6. Optional: a real icon to replace the generated placeholder icon.
+## Still open
+
+The release gaps are the unset homepage, source, issues, Modrinth, CurseForge,
+and contact URLs in [docs/RELEASE.md](docs/RELEASE.md). Do not invent them.
+
+**Stonecutter gotcha:** on 1.21.11 any identifier containing `PlayerRenderer` is rewritten to `AvatarRenderer`. Use `getRenderer(..)` plus a cast.
 
 ## How to build and test
 - Run the box's JDK25 Gradle with `--no-daemon --no-configuration-cache -Dorg.gradle.jvmargs=-Xmx1536m build`. Never `gradle --stop`.

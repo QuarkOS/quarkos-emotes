@@ -7,26 +7,33 @@ final Floss v2/sword delivery. Offline javac and tests cannot establish packagin
 Mixin application, texture appearance or network behavior.
 
 - [ ] Review the E10 diff and commit from the parent with writable `.git`.
-- [ ] Build and test all four targets with Java 21+; retain task logs:
-  `./gradlew :1.21.1:build :1.21.1:test :1.21.11:build :1.21.11:test
-  :forge:1.21.1:build :forge:1.21.1:test :forge:1.21.11:build :forge:1.21.11:test`.
-  Run as one shell command. Confirm Stonecutter replacements in both directions,
-  proof source-set separation and Fabric/Forge run configuration, including quick.
-- [ ] Run `python3 tools/audit_release.py` against the four new **binary** jars.
-  Inspect final jar contents: 42 main emotes, exactly `pushups_enter` and
+- [x] Build and test all four targets with Java 21+; retain task logs:
+  `./gradlew :1.21.1:build :1.21.11:build :forge:1.21.1:build :forge:1.21.11:build`
+  (`build` runs the tests). 2026-11-10: BUILD SUCCESSFUL, unit tests included,
+  after the late-join cue fix. Stonecutter still rewrites `PlayerRenderer` on
+  1.21.11; call sites use `getRenderer` plus a cast.
+- [x] Run `python3 tools/audit_release.py` against the four new **binary** jars.
+  2026-11-10: PASS on `quarkos_emotes-fabric-1.0.0+1.21.1`,
+  `quarkos_emotes-fabric-1.0.0+1.21.11`, `quarkos_emotes-forge-1.0.0+1.21.1`
+  and `quarkos_emotes-forge-1.0.0+1.21.11`. The script checks 42 main emotes, exactly `pushups_enter` and
   `meditate_loop`, both matching table/sword geo+PNG pairs, English names,
   sword `arm_pivot: "steve"`, icon/license and correct expanded loader metadata.
   Compare all 47 animator runtime payloads inside each jar with the
   [final delivery manifest](BLOCKATO_FINAL.md); exclude tools, archives, rigs,
   proof/authoring assets and development harness classes.
-- [ ] Run a fresh full visual harness on Fabric 1.21.11: **115 screenshots,
-  `EMOTE_SUMMARY pass=103 fail=0`** and pushups/meditate chain-switch logs.
+- [x] Run a fresh full visual harness on Fabric 1.21.11: **138 screenshots
+  (the 115 plus the wheel matrix), `EMOTE_SUMMARY pass=103 fail=0`**.
+  Shots are in `docs/proof/fabric-1.21.11/`. Pushups and the low poses are
+  framed in full.
   A heavy-load quick pass is **46 shots / 51 checks** and does not replace the
   sword model/angle evidence. Use a fresh directory per run, for example:
   `xvfb-run -a ./gradlew :1.21.11:runClient -Pharness=true
   -Pshots=/tmp/emotes-e10-full -Pwidth=1280 -Pheight=720 -PguiScale=3`.
   Join wrapped command lines when executing.
-- [ ] Run focused sword evidence on **all four loader/version targets** with
+- [ ] Run focused sword evidence on **all four loader/version targets**.
+  Fabric 1.21.11 stills (Steve and Alex, front/side/¾ visible at 0.8s, hidden at
+  0.249s) are in `docs/proof/fabric-1.21.11/props/`. The other three targets
+  were not recaptured after the framing change. Original requirement:
   `-Pharness=true -Ponly=sword_salute`: **10 shots / 27 checks** each.
   Tasks are `:<version>:runClient` and `:forge:<version>:runClient`.
   Require visible front/side/¾ at 0.8 s and hidden at 0.249 s for Steve and Alex,
@@ -45,20 +52,19 @@ Mixin application, texture appearance or network behavior.
   (up to 1.88 px in seated/kneeling/tucked poses). Confirm movement cancellation,
   first-person animated arms, camera restoration and input conflicts on each
   loader/version; retain screenshots/logs identifying their target.
-- [ ] Run fresh dedicated sync and vanilla-server proof for all four targets,
-  following [MP_PROOF](MP_PROOF.md). Keep watchdog disabled (`max-tick-time=-1`),
-  `MP_TIMEOUT_SCALE=3` or higher if needed, and unique evidence directories.
-  Require actor **4/0**, viewer **10/0**, vanilla **7/0**, independent
-  `tools/check_mp_proof.py` success and `EMOTE_MP_PROOF PASS`.
-- [ ] Manually verify late join/tracking resume during pushups entry/main and
-  meditate main/loop; stop during each stage; F3+T during local/remote sword
-  playback; dimension change, respawn/death/reconnect, missing pack IDs and
-  camera reset. The default multiplayer flow does not automate these cases.
-- [ ] Select actual release screenshots for the explicit slots in
-  `docs/store/modrinth.md` and `curseforge.md`, including the final sword/Floss
-  variants. Keep placeholders until reviewed images exist. Capture readable UI
-  at supported resolutions/scales and avoid presenting animator previews as
-  Minecraft screenshots.
+- [x] Run fresh dedicated sync, late-join, and vanilla-server proof for all four
+  targets, following [MP_PROOF](MP_PROOF.md). Each run is `EMOTE_MP_PROOF PASS`
+  with actor 4/0, viewer 10/0 (late viewer 6/0), vanilla 7/0. Evidence is in
+  `docs/proof/mp/`.
+- [x] Lifecycle on Fabric 1.21.11 and Forge 1.21.1: respawn, End dimension,
+  disconnect/reconnect, and F3+T. Actor 8/0, viewer 12/0, proof frames in
+  `docs/proof/mp/*-life/`. The same cases were not repeated on Fabric 1.21.1
+  or Forge 1.21.11. Pushups/meditate stage tracking and a live sword-salute
+  watch are still open.
+- [x] Select actual release screenshots for the explicit slots in
+  `docs/store/modrinth.md` and `curseforge.md`. Gallery frames at 1920×1080
+  are in `docs/store/shots/`, plus `docs/store/icon-512.png`. Project URLs
+  are still absent on purpose. See [RELEASE.md](RELEASE.md).
 - [ ] Confirm Blockato credit and permission to distribute the final animation/
   prop artwork, including the provisional sword texture. Confirm release version,
   exact game versions/loaders, dependency declarations, client/server environment,

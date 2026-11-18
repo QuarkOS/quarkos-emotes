@@ -28,5 +28,8 @@ Quilt, Bedrock Edition, or additional game versions as supported without
 separate testing. Bedrock here describes the animation file format.
 
 The optional server classification describes the intended synchronization
-component. Final environment metadata must be checked against the merged
-loader artifacts and dedicated-server tests. All screenshots remain pending.
+component. Dedicated-server proof for all four loader/version targets (sync,
+late join, vanilla fallback) is in `docs/proof/mp/`. Lifecycle proof is there
+for Fabric 1.21.11 and Forge 1.21.1. Gallery frames are in
+`docs/store/shots/`. Homepage, source, issues, Modrinth, and CurseForge URLs
+are still unset; see `docs/RELEASE.md`. Nothing has been published.

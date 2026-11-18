@@ -30,6 +30,21 @@ class TrackingPlaybackTest {
             """;
         assertThrows(IllegalArgumentException.class,()->PropGeometry.parse(new java.io.StringReader(json),"test:texture"));
     }
+    @Test void lateJoinSeeksPushupsLoopAndMeditateBreath() {
+        var enter=new Emote("quarkos_emotes:pushups","Pushups","","pose",1.3,Emote.Loop.ONCE,true,"linear",Map.of(),List.of(),null);
+        var push=new Emote("quarkos_emotes:pushups","Pushups","","pose",2,Emote.Loop.LOOP,true,"linear",Map.of(),List.of(),null).withChain(enter,null);
+        var player=new EmotePlayer(push);player.seek(1.3+5.25);
+        assertEquals("main",player.segment(0).name());
+        assertEquals(1.25,player.time(0),1e-9);
+        assertEquals(1,player.weight(0));
+        var breath=new Emote("quarkos_emotes:meditate","Meditate","","pose",2,Emote.Loop.LOOP,true,"linear",Map.of(),List.of(),null);
+        var meditate=new Emote("quarkos_emotes:meditate","Meditate","","pose",5.6,Emote.Loop.HOLD,true,"linear",Map.of(),List.of(),null).withChain(null,breath);
+        var seated=new EmotePlayer(meditate);seated.seek(5.6+3.25);
+        assertEquals("loop",seated.segment(0).name());
+        assertEquals(1.25,seated.time(0),1e-9);
+        assertEquals(EmotePlayer.State.PLAYING,seated.state());
+        assertTrue(seated.sounds().isEmpty());
+    }
     @Test void expiredOnceIsFinishedButLateHoldRetainsLastFrame() {
         var once=new EmotePlayer(emote(Emote.Loop.ONCE));once.seek(20);assertTrue(once.finished());assertTrue(once.sounds().isEmpty());
         var hold=new EmotePlayer(emote(Emote.Loop.HOLD));hold.seek(20);

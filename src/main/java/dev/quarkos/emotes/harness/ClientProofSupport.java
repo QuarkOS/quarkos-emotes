@@ -15,4 +15,5 @@ public final class ClientProofSupport implements ClientProofHooks.Support {
     public float drop() {return ClientHarness.portraitDrop;}
     public float orbit() {return ClientHarness.portraitOrbit;}
     public float forward() {return ClientHarness.portraitForward;}
+    public float pitch() {return ClientHarness.portraitPitch;}
 }

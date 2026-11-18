@@ -12,7 +12,7 @@ public final class ClientProofHooks {
         void propPass(int entity);
         String model();
         void capture();
-        float distance();float drop();float orbit();float forward();
+        float distance();float drop();float orbit();float forward();float pitch();
     }
     private static Support support;
     public static boolean visual() { return Boolean.getBoolean("quarkos_emotes.harness"); }
@@ -36,4 +36,5 @@ public final class ClientProofHooks {
     public static float drop() {return visual()?support().drop():0;}
     public static float orbit() {return visual()?support().orbit():0;}
     public static float forward() {return visual()?support().forward():0;}
+    public static float pitch() {return visual()?support().pitch():0;}
 }

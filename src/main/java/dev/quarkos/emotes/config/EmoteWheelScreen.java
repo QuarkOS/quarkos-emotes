@@ -15,28 +15,29 @@ import org.lwjgl.glfw.GLFW;
 public final class EmoteWheelScreen extends Screen {
     private EditBox search;
     private int page,hover=-1,cx,cy,radius;
+    private WheelLayout layout=WheelLayout.of(320,240);
     private boolean favorites;
     private int category;
     private static final List<String> CATEGORIES=List.of("all","greeting","reaction","dance","pose","fun");
     public int harnessHover=-1;
     public EmoteWheelScreen() { super(Component.translatable("screen.quarkos_emotes.wheel")); }
+    private void applyLayout() {
+        layout=WheelLayout.of(width,height); cx=layout.cx(); cy=layout.cy(); radius=layout.radius();
+    }
     @Override protected void init() {
-        cx=width/2; radius=Math.min(104,Math.max(48,(height-118)/2)); cy=54+(height-118)/2;
+        applyLayout();
         String query=search==null?"":search.getValue();
-        int searchWidth=Math.min(160,width-132),left=cx-(searchWidth+100)/2;
-        search=new EditBox(font,left,29,searchWidth,18,Component.translatable("text.quarkos_emotes.search"));
+        search=new EditBox(font,layout.searchX(),layout.searchY(),layout.searchW(),layout.searchH(),Component.translatable("text.quarkos_emotes.search"));
         search.setHint(Component.translatable("text.quarkos_emotes.search")); search.setMaxLength(80); search.setValue(query);
         search.setResponder(s->page=0); addRenderableWidget(search);
         addRenderableWidget(Button.builder(categoryText(),b->{category=(category+1)%CATEGORIES.size();page=0;b.setMessage(categoryText());})
-                .bounds(left+searchWidth+4,28,96,20).tooltip(Tooltip.create(Component.translatable("tooltip.quarkos_emotes.category"))).build());
-        addRenderableWidget(Button.builder(Component.literal("‹"),b->page(-1)).bounds(cx-104,height-27,24,20)
-                .tooltip(Tooltip.create(Component.translatable("tooltip.quarkos_emotes.previous_page"))).build());
+                .bounds(layout.categoryX(),layout.searchY(),layout.categoryW(),layout.controlH()).build());
+        addRenderableWidget(Button.builder(Component.literal("‹"),b->page(-1)).bounds(layout.prevX(),layout.bottomY(),layout.controlH(),layout.controlH()).build());
         addRenderableWidget(Button.builder(favoritesText(),b->{favorites=!favorites;page=0;b.setMessage(favoritesText());})
-                .bounds(cx-76,height-27,152,20).tooltip(Tooltip.create(Component.translatable("tooltip.quarkos_emotes.favorites"))).build());
-        addRenderableWidget(Button.builder(Component.literal("›"),b->page(1)).bounds(cx+80,height-27,24,20)
-                .tooltip(Tooltip.create(Component.translatable("tooltip.quarkos_emotes.next_page"))).build());
+                .bounds(layout.favX(),layout.bottomY(),layout.favW(),layout.controlH()).build());
+        addRenderableWidget(Button.builder(Component.literal("›"),b->page(1)).bounds(layout.nextX(),layout.bottomY(),layout.controlH(),layout.controlH()).build());
         addRenderableWidget(Button.builder(Component.translatable("text.quarkos_emotes.settings"),b->minecraft.setScreen(new EmoteConfigScreen(this)))
-                .bounds(width-76,5,70,20).build());
+                .bounds(layout.settingsX(),4,layout.settingsW(),layout.controlH()).build());
         clearFocus();
     }
     // Start with wheel shortcuts available; clicking or tabbing to search enables typing.
@@ -77,8 +78,9 @@ public final class EmoteWheelScreen extends Screen {
         return Math.floorMod((int)Math.floor((Math.atan2(dy,dx)+Math.PI/2+Math.PI/8)/(Math.PI/4)),8);
     }
     @Override public void render(GuiGraphics g,int mx,int my,float partial) {
+        applyLayout();
         g.fill(0,0,width,height,0xda151920);
-        g.fill(0,height-47,width,height,0xee101318);
+        g.fill(0,layout.bottomY()-4,width,height,0xee101318);
         var slots=slots(); hover=harnessHover>=0?harnessHover:sector(mx,my);
         // Horizontal runs form a smooth annulus with eight independently highlighted sectors.
         for(int y=cy-radius;y<=cy+radius;y++) {
@@ -102,31 +104,48 @@ public final class EmoteWheelScreen extends Screen {
             int half=(int)Math.sqrt(inner*inner-dy*dy);
             g.fill(cx-half,cy+dy,cx+half+1,cy+dy+1,0xff1c222b);
         }
+        float iconScale=layout.contentScale();
         for(int i=0;i<slots.size();i++) {
             double angle=-Math.PI/2+i*Math.PI/4;
             int x=cx+(int)(Math.cos(angle)*radius*.70), y=cy+(int)(Math.sin(angle)*radius*.70);
             var e=slots.get(i); Identifier id=Identifier.tryParse(e.icon());
+            var pose=g.pose();
+            //? if >=1.21.11 {
+            pose.pushMatrix();
+            pose.translate(x,y);
+            pose.scale(iconScale,iconScale);
+            //?} else {
+            /*pose.pushPose();
+            pose.translate(x,y,0);
+            pose.scale(iconScale,iconScale,1);
+            *///?}
             if(id!=null) {
                 //? if >=1.21.11 {
                 var item=BuiltInRegistries.ITEM.getValue(id);
                 //?} else {
                 /*var item=BuiltInRegistries.ITEM.get(id);
                 *///?}
-                if(item!=null) g.renderItem(new ItemStack(item),x-8,y-10);
+                if(item!=null) g.renderItem(new ItemStack(item),-8,-10);
             }
             boolean starred=EmoteConfig.get().favorites.contains(e.id());
-            g.drawCenteredString(font,Component.literal((i+1)+(starred?" ★":"")),x,y+8,0xffeff5ff);
+            g.drawCenteredString(font,Component.literal((i+1)+(starred?" ★":"")),0,8,0xffeff5ff);
+            //? if >=1.21.11 {
+            pose.popMatrix();
+            //?} else {
+            /*pose.popPose();
+            *///?}
         }
-        g.drawString(font,title,10,11,0xffeff5ff,false);
+        if(layout.compact()) g.drawString(font,Component.literal("Emotes"),8,layout.searchY()+3,0xffeff5ff,false);
+        else g.drawString(font,title,10,11,0xffeff5ff,false);
         g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.page"),cx,cy-13,0xffaab8c8);
         g.drawCenteredString(font,Component.literal((page+1)+" / "+Math.max(1,(filtered().size()+7)/8)),cx,cy+2,0xffeff5ff);
+        int nameY=cy+radius+4;
         if(hover>=0&&hover<slots.size()) {
-            Emote e=slots.get(hover); g.drawCenteredString(font,Component.literal(font.plainSubstrByWidth(label(e).getString(),width-16)),cx,cy+radius+6,0xffffffff);
+            Emote e=slots.get(hover); g.drawCenteredString(font,Component.literal(font.plainSubstrByWidth(label(e).getString(),width-16)),cx,nameY,0xffffffff);
             EmotesClient.selected=e.id();
-        } else if(slots.isEmpty()) g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.empty"),cx,cy+radius+6,0xffced5df);
-        else g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.choose"),cx,cy+radius+6,0xffcbd5e1);
-        Component help=Component.translatable("text.quarkos_emotes.wheel_help");
-        g.drawCenteredString(font,help,cx,height-41,0xffc9d3df);
+        } else if(slots.isEmpty()) g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.empty"),cx,nameY,0xffced5df);
+        else g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.choose"),cx,nameY,0xffcbd5e1);
+        if(!layout.compact()) g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.wheel_help"),cx,layout.bottomY()-12,0xffc9d3df);
         super.render(g,mx,my,partial);
     }
     private void select(int slot) { var list=slots(); if(slot>=0&&slot<list.size()) { minecraft.setScreen(null);EmotesClient.play(list.get(slot).id()); } else onClose(); }

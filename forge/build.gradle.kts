@@ -222,6 +222,9 @@ if (minecraftVersion == "forge" || forgeNode == null) {
             // Same offline player as the other head shots, so the default skin does not change.
             args("--username", providers.gradleProperty("username").orNull ?: "Player546")
         }
+        if (providers.gradleProperty("store").orNull == "true") {
+            systemProperty("quarkos_emotes.store", "true")
+        }
         val only = providers.gradleProperty("only").orNull
         if (!only.isNullOrBlank()) {
             systemProperty("quarkos_emotes.only", only)
@@ -237,7 +240,7 @@ if (minecraftVersion == "forge" || forgeNode == null) {
         environment("vblank_mode", "0")
         environment("__GL_SYNC_TO_VBLANK", "0")
         if (name == "runClient") {
-            jvmArgs("-Xmx1536M")
+            jvmArgs("-Xmx${providers.gradleProperty("gameMemory").orNull ?: "1536M"}")
             doFirst {
                 val dir = workingDir
                 dir.mkdirs()

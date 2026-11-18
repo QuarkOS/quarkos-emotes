@@ -3,6 +3,7 @@ package dev.quarkos.emotes.harness;
 import dev.quarkos.emotes.*;
 import dev.quarkos.emotes.animation.*;
 import dev.quarkos.emotes.config.*;
+import dev.quarkos.emotes.render.ShotFraming;
 import net.minecraft.client.*;
 import net.minecraft.client.gui.screens.*;
 import net.minecraft.client.gui.screens.worldselection.*;
@@ -30,7 +31,7 @@ public final class ClientHarness {
     public static String model="steve";
     private static List<Shot> shots=List.of();
     private static Path pending;
-    public static float portraitDistance=2.85f,portraitDrop=.65f,portraitOrbit,portraitForward;
+    public static float portraitDistance=3.25f,portraitDrop=.62f,portraitOrbit,portraitForward,portraitPitch;
     private static final int GUI_SCALE=Math.max(0,Math.min(8,Integer.getInteger("quarkos_emotes.guiScale",0)));
     /** Authored key times in seconds: contact/gesture peaks, not a fraction of clip length. */
     private static double poseTime(Emote e) {
@@ -155,6 +156,16 @@ public final class ClientHarness {
     }
     private static List<Shot> buildShots() {
         List<Shot> list=new ArrayList<>();
+        if(Boolean.getBoolean("quarkos_emotes.store")) {
+            list.add(new Shot("store-wheel","quarkos_emotes:wave",CameraType.THIRD_PERSON_FRONT,"ui-wheel"));
+            list.add(new Shot("store-wave-steve","quarkos_emotes:wave",CameraType.THIRD_PERSON_FRONT,""));
+            list.add(new Shot("store-floss-alex","quarkos_emotes:floss",CameraType.THIRD_PERSON_FRONT,"34"));
+            list.add(new Shot("store-backflip-steve","quarkos_emotes:backflip",CameraType.THIRD_PERSON_FRONT,"34"));
+            list.add(new Shot("store-meditate-steve","quarkos_emotes:meditate",CameraType.THIRD_PERSON_FRONT,""));
+            list.add(new Shot("store-sword-steve","quarkos_emotes:sword_salute",CameraType.THIRD_PERSON_FRONT,""));
+            list.add(new Shot("store-sword-alex","quarkos_emotes:sword_salute",CameraType.THIRD_PERSON_FRONT,""));
+            return list;
+        }
         if(EmoteResources.REGISTRY.all().isEmpty()) {
             fail++;LoggerFactory.getLogger("quarkos_emotes").error("EMOTE_CHECK name=registry result=FAIL detail=no_emotes_loaded");
         }
@@ -183,9 +194,15 @@ public final class ClientHarness {
         }
         String wave=EmoteResources.REGISTRY.all().stream().filter(e->e.id().endsWith(":wave")).map(Emote::id).findFirst()
                 .orElse(EmoteResources.REGISTRY.all().isEmpty()?"":EmoteResources.REGISTRY.all().getFirst().id());
-        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","fp-wave","fp-wave-camera","fp-sleep","fp-sleep-camera")) if((!QUICK||ui.startsWith("ui-"))&&(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel"))))
-            list.add(new Shot(ui,ui.startsWith("fp-sleep")?"quarkos_emotes:sleep":wave,
+        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","ui-config-meditate","ui-config-pushups","ui-config-lay_down","fp-wave","fp-wave-camera","fp-sleep","fp-sleep-camera")) if((!QUICK||ui.startsWith("ui-"))&&(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel"))||(ui.startsWith("ui-config-")&&only.contains("ui-config"))))
+            list.add(new Shot(ui,ui.startsWith("fp-sleep")?"quarkos_emotes:sleep":ui.startsWith("ui-config-")?"quarkos_emotes:"+ui.substring("ui-config-".length()):wave,
                     ui.equals("fp-wave")||ui.equals("fp-sleep")?CameraType.FIRST_PERSON:CameraType.THIRD_PERSON_FRONT,ui));
+        if(!QUICK) for(int[] res:new int[][]{{854,480},{1280,720},{1920,1080},{2560,1440}})
+            for(int scale:new int[]{1,2,3,4,0}) {
+                String name="ui-wheel-"+res[0]+"x"+res[1]+"-s"+scale;
+                if(only.contains("")||only.contains("ui-matrix")||only.contains(name))
+                    list.add(new Shot(name,wave,CameraType.THIRD_PERSON_FRONT,"matrix:"+res[0]+":"+res[1]+":"+scale));
+            }
         if(list.isEmpty())throw new IllegalArgumentException("No screenshots match quarkos_emotes.only");
         return list;
     }
@@ -203,25 +220,31 @@ public final class ClientHarness {
         if(index>=shots.size()) {
             stage=Stage.STOP;wait=0;return;
         }
-        var shot=shots.get(index);anchor(mc);
+        var shot=shots.get(index);
+        boolean matrix=shot.ui().startsWith("matrix:");
+        if(matrix&&wait==0) {
+            String[] parts=shot.ui().split(":");
+            resize(mc,Integer.parseInt(parts[1]),Integer.parseInt(parts[2]),Integer.parseInt(parts[3]));
+            wait++;return;
+        }
+        // Give the framebuffer callback time to catch the new window before the wheel is laid out.
+        if(matrix&&wait<12) { wait++;return; }
+        anchor(mc);
         if(restoringCamera) {
             if(++restoreTicks<6)return;
             check(shot.name()+"-restore",mc.options.getCameraType()==CameraType.FIRST_PERSON&&EmotesClient.player(mc.player.getUUID())==null,
                     "camera_restored_after_0.2s_cancel_blend");
             restoringCamera=false;index++;wait=0;ticks=0;return;
         }
-        if(wait==0) {
+        if(wait==(matrix?12:0)) {
+            if(matrix) resize(mc,wantWidth,wantHeight,mc.options.guiScale().get());
             moved=false;handMoved=false;queued=false;bodyX=bodyY=0;renderedProps.clear();propPass=false;mc.setScreen(null);
             model=shot.name().endsWith("-alex")?"alex":"steve";
-            portraitOrbit=shot.ui().equals("side")?90:shot.ui().equals("34")?35:0;
-            portraitDistance=2.85f;portraitDrop=.65f;portraitForward=0;
-            if(shot.id().endsWith(":tableflip")) {
-                portraitDistance=portraitOrbit==0?3.1f:2.85f;portraitDrop=.8f;
-                if(portraitOrbit!=0)portraitForward=.55f;
-            }
-            if(shot.id().endsWith(":sit_full")||shot.id().endsWith(":sit")) { portraitDistance=2.25f;portraitDrop=1.05f; }
-            if(shot.id().endsWith(":backflip")) { portraitDistance=3.3f;portraitDrop=0; }
-            if(Set.of("quarkos_emotes:worm","quarkos_emotes:sleep","quarkos_emotes:lay_down","quarkos_emotes:pushups").contains(shot.id())) { portraitDistance=3.0f;portraitDrop=1.3f; }
+            boolean namedView=shot.ui().equals("side")||shot.ui().equals("34");
+            float requested=shot.ui().equals("side")?90:shot.ui().equals("34")?35:0;
+            var frame=ShotFraming.forId(shot.id(),requested);
+            portraitOrbit=namedView?requested:frame.orbit();
+            portraitDistance=frame.distance();portraitDrop=frame.drop();portraitForward=frame.forward();portraitPitch=frame.pitch();
             boolean cameraShot=shot.ui().endsWith("-camera");
             EmoteConfig.get().firstPerson=cameraShot?EmoteConfig.FirstPerson.THIRD_PERSON_CAMERA:EmoteConfig.FirstPerson.SHOW_ARMS;
             mc.options.setCameraType(shot.camera());
@@ -239,11 +262,17 @@ public final class ClientHarness {
             }
             // F1 also hides the first-person hands. Keep the normal HUD for that evidence shot.
             mc.options.hideGui=!(shot.ui().equals("fp-wave")||shot.ui().equals("fp-sleep"));
-            if(shot.ui().startsWith("ui-wheel")) { var wheel=new EmoteWheelScreen();mc.setScreen(wheel);if(shot.ui().endsWith("hover"))wheel.harnessHover=0; }
-            if(shot.ui().equals("ui-config")) {
+            if(shot.ui().startsWith("ui-wheel")||matrix) {
+                var wheel=new EmoteWheelScreen();mc.setScreen(wheel);if(shot.ui().endsWith("hover"))wheel.harnessHover=0;
+                if(!shot.ui().endsWith("hover")) cursor(mc,2,2);
+            }
+            if(shot.ui().equals("ui-config")||shot.ui().startsWith("ui-config-")) {
+                if(shot.ui().startsWith("ui-config-")) EmotesClient.selected=shot.id();
                 mc.setScreen(new EmoteConfigScreen(null));
                 // init() starts the preview; freeze that new instance as well.
                 p=EmotesClient.player(mc.player.getUUID());if(p!=null)p.freeze(poseTime(p.emote()));
+                var geo=ConfigLayout.geometry(mc.getWindow().getGuiScaledWidth(),mc.getWindow().getGuiScaledHeight());
+                cursor(mc,geo.left()+geo.optionWidth()/2.0,geo.top()+10);
             }
             LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_SHOT name={} time={} camera={} distance={} orbit={} guiScale={} effectiveScale={}",
                     shot.name(),p==null?0:p.time(0),mc.options.getCameraType(),portraitDistance,portraitOrbit,GUI_SCALE,mc.getWindow().getGuiScale());
@@ -255,7 +284,7 @@ public final class ClientHarness {
             chainPlayer.freeze(poseTime(chainPlayer.emote()));
         }
         wait++;
-        if(wait<35) return;
+        if(wait<(matrix?48:35)) return;
         Path path=directory().resolve(shot.name()+".png");
         if(!queued) { Files.createDirectories(path.getParent());Files.deleteIfExists(path);pending=path;queued=true;return; }
         if(!Files.isRegularFile(path)) { if(wait>300) throw new IllegalStateException("Screenshot not written: "+path);return; }
@@ -278,9 +307,9 @@ public final class ClientHarness {
             check(shot.name()+"-prop",propPass&&visible==expected&&renderedProps.contains("sword")==expected,
                     "expected_visible="+expected+"_sampled="+visible+"_submitted="+renderedProps.contains("sword")+"_render_pass="+propPass);
         }
-        if(chainFrom!=null)check(shot.name()+"-chain",chainSwitched&&playback!=null&&playback.weight(0)==1,
+        if(chainFrom!=null&&shot.name().startsWith("emote-"))check(shot.name()+"-chain",chainSwitched&&playback!=null&&playback.weight(0)==1,
                 "segment_switched_without_blend");
-        if(Set.of("quarkos_emotes:sit","quarkos_emotes:sleep","quarkos_emotes:kneel","quarkos_emotes:lay_down").contains(shot.id()))
+        if(!shot.name().startsWith("ui-")&&Set.of("quarkos_emotes:sit","quarkos_emotes:sleep","quarkos_emotes:kneel","quarkos_emotes:lay_down").contains(shot.id()))
             check(shot.name()+"-hold",playback!=null&&playback.state()==EmotePlayer.State.HOLDING&&playback.weight(0)==1,
                     "held_final_pose_survives_anchor");
         if(shot.name().startsWith("emote-")&&!shot.name().endsWith("-back")&&!shot.name().endsWith("-side")&&!shot.name().endsWith("-34")) {
@@ -291,6 +320,8 @@ public final class ClientHarness {
             if(handMoved)pass++;else fail++;
             LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CHECK name={} result={} detail=animated_hand_render_hook",shot.name(),handMoved?"PASS":"FAIL");
         }
+        if(shot.name().startsWith("store-")&&!shot.name().equals("store-wheel"))
+            check(shot.name()+"-rendered",moved,"store pose rendered");
         if(shot.ui().endsWith("-camera")) {
             boolean ok=mc.options.getCameraType()==CameraType.THIRD_PERSON_BACK&&moved;
             if(ok)pass++;else fail++;
@@ -304,25 +335,51 @@ public final class ClientHarness {
         Path path=directory().resolve(name+".png");Files.createDirectories(path.getParent());Files.deleteIfExists(path);pending=path;return path;
     }
     private static Path directory() { return Path.of(System.getProperty("quarkos_emotes.shots","build/shots")); }
+    private static int wantWidth,wantHeight;
+    private static void resize(Minecraft mc,int width,int height,int guiScale) {
+        wantWidth=width;wantHeight=height;
+        mc.options.guiScale().set(guiScale);
+        mc.getWindow().setWindowed(width,height);
+        // The framebuffer callback can lag a GLFW poll, and resizeDisplay then
+        // rebuilds the color target at the previous size. Pin both dimensions
+        // so the wheel is laid out for the requested window.
+        org.lwjgl.glfw.GLFW.glfwPollEvents();
+        mc.getWindow().setWidth(width);
+        mc.getWindow().setHeight(height);
+        mc.resizeDisplay();
+        var target=mc.getMainRenderTarget();
+        LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_UI resize={}x{} requestedScale={} logical={}x{} effective={} target={}x{}",
+                width,height,guiScale,mc.getWindow().getGuiScaledWidth(),mc.getWindow().getGuiScaledHeight(),mc.getWindow().getGuiScale(),target.width,target.height);
+    }
+    private static void cursor(Minecraft mc,double logicalX,double logicalY) {
+        double scale=mc.getWindow().getGuiScale();
+        //? if >=1.21.11 {
+        long handle=mc.getWindow().handle();
+        //?} else {
+        /*long handle=mc.getWindow().getWindow();
+        *///?}
+        org.lwjgl.glfw.GLFW.glfwSetCursorPos(handle,logicalX*scale,logicalY*scale);
+    }
     /** At GameRenderer TAIL: includes deferred GUI and the fully rendered world. */
+    /** Hide HUD, chat and toasts for a store or lifecycle frame. */
+    public static void quiet(Minecraft mc) {
+        mc.options.hideGui=true;
+        if(mc.gui!=null) mc.gui.getChat().clearMessages(false);
+        //? if >=1.21.11 {
+        mc.getToastManager().clear();
+        //?} else {
+        /*mc.getToasts().clear();
+        *///?}
+    }
     public static void capture() {
         if(pending==null) return;Path path=pending;pending=null;Minecraft mc=Minecraft.getInstance();
+        if(Boolean.getBoolean("quarkos_emotes.store")||MultiplayerHarness.cleanShot()) quiet(mc);
         //? if >=1.21.11 {
-        var target=mc.getMainRenderTarget();var color=target.getColorTexture();
-        if(!(color instanceof com.mojang.blaze3d.opengl.GlTexture texture)) { Screenshot.takeScreenshot(target,img->write(path,img));return; }
-        int width=target.width,height=target.height;
-        org.lwjgl.opengl.GL11.glFinish();int old=org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D);
-        org.lwjgl.opengl.GL11.glBindTexture(org.lwjgl.opengl.GL11.GL_TEXTURE_2D,texture.glId());
-        java.nio.ByteBuffer buffer=org.lwjgl.system.MemoryUtil.memAlloc(width*height*4);
-        NativeImage img=new NativeImage(width,height,false);
-        try {
-            org.lwjgl.opengl.GL11.glGetTexImage(org.lwjgl.opengl.GL11.GL_TEXTURE_2D,0,org.lwjgl.opengl.GL11.GL_RGBA,org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE,buffer);
-            for(int y=0;y<height;y++)for(int x=0;x<width;x++) {
-                int i=((height-1-y)*width+x)*4;
-                img.setPixel(x,y,((buffer.get(i+3)&255)<<24)|((buffer.get(i)&255)<<16)|((buffer.get(i+1)&255)<<8)|(buffer.get(i+2)&255));
-            }
-            write(path,img);
-        } finally { org.lwjgl.system.MemoryUtil.memFree(buffer);org.lwjgl.opengl.GL11.glBindTexture(org.lwjgl.opengl.GL11.GL_TEXTURE_2D,old); }
+        // The presented default framebuffer repeats the previous color target after a
+        // resize. Copy the main target, which resizeDisplay rebuilds at the new size.
+        var target=mc.getMainRenderTarget();
+        LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_CAPTURE target={}x{} window={}x{}",target.width,target.height,mc.getWindow().getWidth(),mc.getWindow().getHeight());
+        net.minecraft.client.Screenshot.takeScreenshot(target,image->write(path,image));
         //?} else {
         /*write(path,Screenshot.takeScreenshot(mc.getMainRenderTarget()));
         *///?}

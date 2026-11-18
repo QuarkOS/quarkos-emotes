@@ -1,15 +1,30 @@
-# Dedicated multiplayer proof (E7)
+# Dedicated multiplayer proof
 
-Run these **as the parent**, after building the selected target. This change has
-only been checked with cached-jar javac; it has not launched Gradle or Minecraft.
-Use a fresh output directory for every run:
+All four loader/version targets passed sync, late join, and vanilla-server
+proof on 2026-11-10. Fabric 1.21.11 and Forge 1.21.1 also passed lifecycle
+(`life`: respawn, End dimension, disconnect/reconnect, and F3+T). Screenshots
+and summaries are in [docs/proof](proof/README.md). Use a fresh output
+directory for every run:
 
 ```bash
-tools/mp_proof.sh fabric 1.21.11 /tmp/emotes-e7-fabric-sync sync 25599
-tools/mp_proof.sh fabric 1.21.11 /tmp/emotes-e7-fabric-vanilla vanilla 25599
+tools/mp_proof.sh fabric 1.21.11 /tmp/emotes-fabric-sync sync 25571
+tools/mp_proof.sh fabric 1.21.11 /tmp/emotes-fabric-late late 25572
+tools/mp_proof.sh fabric 1.21.11 /tmp/emotes-fabric-vanilla vanilla 25573
 ```
 
 Replace `fabric` with `forge` and/or `1.21.11` with `1.21.1` for the other targets.
+The fourth argument is `sync`, `late`, `vanilla`, or `life`.
+`late` starts the actor first and holds a looping bigdance; the viewer joins
+afterward and must render that emote from the server's elapsed time, not from
+zero. `vanilla` downloads the official Mojang server for that game version and
+does not load this mod on it. The client must stay connected, play locally, and
+show the one-time local-only hint.
+`life` starts the viewer first. The actor dances, dies and respawns, travels
+to the End and back, disconnects and reconnects, then both clients reload
+resource packs. The viewer must go idle after each interruption and see the
+next emote. Its reload must keep the remote dance moving. Expected summaries
+are actor **8/0** and viewer **12/0**. The viewer window is 1920×1080 so
+`store-multiplayer.png` can be used as a gallery frame.
 The tasks are `:<version>:runServer|runClient` and
 `:forge:<version>:runServer|runClient`. The script starts one dedicated server,
 then B/viewer, waits for its connection, then A/actor. Vanilla mode starts only A.
@@ -64,7 +79,7 @@ Evidence is under OUT: `server.log`, `actor.log`, `viewer.log`, copied game logs
 `shots-viewer/mp-viewer-{wave,bigdance}.png` and
 `shots-actor/mp-vanilla-hint.png`. The runner sends `stop` to the server, bounds
 all processes with timeouts, cleans up its process groups, and prints summaries.
-`python3 tools/check_mp_proof.py OUT sync|vanilla` independently checks complete
+`python3 tools/check_mp_proof.py OUT sync|late|vanilla|life` independently checks complete
 assertions, screenshots, server relays and absence of ERROR logs. It fails closed;
 inspect and resolve any launch/environment error before accepting evidence.
 

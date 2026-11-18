@@ -28,7 +28,7 @@ tasks.withType<JavaExec>().configureEach {
         providers.gradleProperty("runDir").orNull?.let { workingDir(rootProject.file(it)) }
         if (isClient) {
             systemProperty("quarkos_emotes.quick", providers.gradleProperty("quick").orNull ?: "false")
-            for (key in listOf("joinServer", "role", "vanilla")) {
+            for (key in listOf("joinServer", "role", "vanilla", "late", "life")) {
                 providers.gradleProperty(key).orNull?.let { systemProperty("quarkos_emotes.$key", it) }
             }
             if (providers.gradleProperty("harness").orNull != "true") {
@@ -40,9 +40,10 @@ tasks.withType<JavaExec>().configureEach {
             }
         }
         if (isServer) {
-            jvmArgs("-Xmx1536M")
+            jvmArgs("-Xmx${providers.gradleProperty("gameMemory").orNull ?: "1536M"}")
             args("nogui")
             systemProperty("quarkos_emotes.serverHarness", providers.gradleProperty("serverHarness").orNull ?: "false")
+            systemProperty("quarkos_emotes.cleanNames", providers.gradleProperty("cleanNames").orNull ?: "false")
             systemProperty("quarkos_emotes.disableServer",
                 providers.gradleProperty("disableServer").orNull
                     ?: providers.systemProperty("quarkos_emotes.disableServer").orNull ?: "false")
@@ -63,7 +64,7 @@ tasks.withType<JavaExec>().configureEach {
                     difficulty=peaceful
                     allow-flight=true
                     view-distance=6
-                    simulation-distance=4
+                    simulation-distance=6
                     max-players=4
                     enable-status=true
                 """.trimIndent() + "\n")

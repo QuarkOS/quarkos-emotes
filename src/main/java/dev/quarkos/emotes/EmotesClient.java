@@ -24,6 +24,12 @@ public final class EmotesClient {
             new KeyMapping("key.quarkos_emotes.favorite_"+i,InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_UNKNOWN,CATEGORY)).toArray(KeyMapping[]::new);
     private static final Map<UUID,EmotePlayer> PLAYERS=new HashMap<>();
     private static final Map<UUID,Object> ENTITIES=new HashMap<>();
+    private record RemoteCue(String id,int elapsed) {}
+    /** Cues that arrived before the client world existed, plus unknown ids waiting on a reload. */
+    private static final Map<UUID,RemoteCue> PENDING=new HashMap<>();
+    private static final Map<UUID,Integer> REMOTE_ELAPSED=new HashMap<>();
+    private static final Map<UUID,Integer> MISSING=new HashMap<>();
+    public static int remoteElapsed(UUID id) { return REMOTE_ELAPSED.getOrDefault(id,-1); }
     private static boolean ready,hinted;
     private static Object level,localEntity,connection;
     private static boolean sharedLocal;
@@ -36,6 +42,8 @@ public final class EmotesClient {
     private static net.minecraft.world.phys.Vec3 lastPosition;
     private static java.util.function.Function<String,Boolean> sender=id->false;
     public static String selected="";
+    /** Extra yaw degrees applied while the config preview is on screen. Zero during gameplay. */
+    public static float previewOrbit;
     public static void sender(java.util.function.Function<String,Boolean> s) { sender=s; }
     public static EmotePlayer player(UUID id) { return PLAYERS.get(id); }
     public static EmotePlayer entity(int id) {
@@ -50,15 +58,20 @@ public final class EmotesClient {
     public static void receive(UUID uuid,String id,int elapsed) {
         Minecraft mc=Minecraft.getInstance();
         if(!mc.isSameThread()) { mc.execute(()->receive(uuid,id,elapsed));return; }
-        synchronizeWorld(mc);
-        if(mc.level==null||uuid==null||id==null||!PlaybackState.validElapsed(elapsed))return;
+        if(uuid==null||id==null||!PlaybackState.validElapsed(elapsed))return;
         // Local playback starts immediately and must not restart on the server echo.
         if(mc.player!=null&&mc.player.getUUID().equals(uuid))return;
-        if(id.isEmpty()) { var p=PLAYERS.get(uuid);if(p!=null)p.stop(); }
-        else {
-            var e=EmoteResources.REGISTRY.get(id);if(e==null)return;
-            var p=new EmotePlayer(e);p.seek(elapsed/1000.0);PLAYERS.put(uuid,p);ENTITIES.put(uuid,mc.level.getPlayerByUUID(uuid));
-        }
+        if(mc.level==null) { PENDING.put(uuid,new RemoteCue(id,elapsed));return; }
+        applyCue(mc,uuid,id,elapsed);
+    }
+    private static void applyCue(Minecraft mc,UUID uuid,String id,int elapsed) {
+        REMOTE_ELAPSED.put(uuid,elapsed);
+        if(id.isEmpty()) { var p=PLAYERS.get(uuid);if(p!=null)p.stop();PENDING.remove(uuid);return; }
+        var emote=EmoteResources.REGISTRY.get(id);
+        if(emote==null) { PENDING.put(uuid,new RemoteCue(id,elapsed));return; }
+        var playback=new EmotePlayer(emote);playback.seek(elapsed/1000.0);
+        PLAYERS.put(uuid,playback);ENTITIES.put(uuid,mc.level.getPlayerByUUID(uuid));MISSING.remove(uuid);PENDING.remove(uuid);
+        org.slf4j.LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_REMOTE apply id={} elapsedMs={} phase={}",id,elapsed,playback.time(0));
     }
     public static void play(String id) {
         Minecraft mc=Minecraft.getInstance();synchronizeWorld(mc);if(mc.player==null)return;
@@ -103,15 +116,34 @@ public final class EmotesClient {
     private static void restoreCamera(Minecraft mc) { if(savedCamera!=null) { mc.options.setCameraType(savedCamera); savedCamera=null; } }
     private static void synchronizeWorld(Minecraft mc) {
         boolean sameConnection=connection==mc.getConnection();
-        if(!sameConnection) {connection=mc.getConnection();hinted=false;hintCount=0;}
+        if(!sameConnection) {
+            // Keep a cue that raced ahead of the first connection. A later session starts clean.
+            if(!dev.quarkos.emotes.network.RemoteApply.retainCueOnConnectionChange(connection!=null)) {PENDING.clear();REMOTE_ELAPSED.clear();}
+            connection=mc.getConnection();hinted=false;hintCount=0;
+        }
         if(level!=mc.level||localEntity!=mc.player) {
             if(sharedLocal&&sameConnection&&mc.getConnection()!=null)sender.apply("");sharedLocal=false;
-            level=mc.level;localEntity=mc.player;PLAYERS.clear();ENTITIES.clear();lastPosition=null;restoreCamera(mc);
+            // Keep a tracking cue across the first attach and across a local
+            // player-object swap. Only a real level change starts a new session.
+            boolean drop=dev.quarkos.emotes.network.RemoteApply.dropRemoteCues(level!=null,level!=mc.level);
+            if(drop) {PLAYERS.clear();ENTITIES.clear();MISSING.clear();}
+            else if(localEntity!=null&&localEntity!=mc.player) {
+                var id=((net.minecraft.world.entity.player.Player)localEntity).getUUID();
+                PLAYERS.remove(id);ENTITIES.remove(id);MISSING.remove(id);
+            }
+            level=mc.level;localEntity=mc.player;lastPosition=null;
+            if(drop) restoreCamera(mc);
         }
+    }
+    private static void flushPending(Minecraft mc) {
+        if(mc.level==null||PENDING.isEmpty())return;
+        for(var entry:List.copyOf(PENDING.entrySet())) applyCue(mc,entry.getKey(),entry.getValue().id(),entry.getValue().elapsed());
     }
     public static void tick(Minecraft mc) {
         if(!ready) { ready=true; EmoteConfig.load(mc.gameDirectory.toPath()); }
         synchronizeWorld(mc);
+        flushPending(mc);
+        if(!(mc.screen instanceof EmoteConfigScreen)) previewOrbit=0;
         if(mc.screen!=null&&!ClientProofHooks.visual()) {if(!(mc.screen instanceof EmoteConfigScreen))stop();restoreCamera(mc);}
         if(mc.player!=null&&!mc.player.isAlive())restoreCamera(mc);
         if(mc.player!=null) {
@@ -136,8 +168,21 @@ public final class EmotesClient {
         while(it.hasNext()) {
             var entry=it.next();var p=entry.getValue();
             var entity=mc.level==null?null:mc.level.getPlayerByUUID(entry.getKey());
+            if(entity==null) {
+                int waited=MISSING.merge(entry.getKey(),1,Integer::sum);
+                if(!dev.quarkos.emotes.network.RemoteApply.keepWhileEntityMissing(waited)) {
+                    it.remove();ENTITIES.remove(entry.getKey());MISSING.remove(entry.getKey());continue;
+                }
+                // Keep the phase moving so a late joiner is not stuck at the packet's instant.
+                p.tick();p.sounds();
+                if(p.finished()) {it.remove();ENTITIES.remove(entry.getKey());MISSING.remove(entry.getKey());}
+                continue;
+            }
+            MISSING.remove(entry.getKey());
             Object previous=ENTITIES.put(entry.getKey(),entity);
-            if(entity==null||!entity.isAlive()||(previous!=null&&previous!=entity)) {it.remove();ENTITIES.remove(entry.getKey());continue;}
+            if(dev.quarkos.emotes.network.RemoteApply.dropOnEntityReplacement(previous!=null,previous==entity,entity.isAlive())) {
+                it.remove();ENTITIES.remove(entry.getKey());continue;
+            }
             p.tick();
             if(mc.player!=null&&entry.getKey().equals(mc.player.getUUID())&&p.stopping()&&sharedLocal) {
                 sender.apply("");sharedLocal=false;

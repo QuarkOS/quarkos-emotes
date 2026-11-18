@@ -58,8 +58,11 @@ are ignored. The initiating client plays immediately and ignores its server echo
 Both loaders check remote channel presence before sending. Without the server
 mod, playback stays local and a one-time chat hint explains visibility. Fabric's
 mod environment is '*' and Forge's displayTest is IGNORE_ALL_VERSION; vanilla
-peers remain compatible. Late trackers currently receive the next play/stop
-request rather than a snapshot of an already-running emote.
+peers remain compatible. A player who starts tracking someone already emoting
+receives that id and the server's elapsed milliseconds, seeks there, and skips
+sounds that already played. A cue that arrives before the client world exists
+is kept and applied when the world does; playback is not dropped during the
+short gap before the remote player entity spawns.
 
 ## UI, config, and validation
 

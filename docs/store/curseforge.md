@@ -42,20 +42,22 @@ a client install alone does not animate other players on vanilla servers.
 Use the artifact for your exact loader and game version. Confirm final loader
 dependencies and dedicated-server behavior before publishing.
 
-## Screenshot slots — pending final captures
+## Screenshots
 
-| Slot | Required capture | Status |
-| --- | --- | --- |
-| Cover | Wheel with readable categories/search | Placeholder; no image selected |
-| Actions | Steve/Alex backflip, worm and Floss v2 | Placeholder; new Floss capture required |
-| Sword | Steve/Alex front, side and ¾ at 0.8 s | Placeholder; grip/texture review required |
-| Sword visibility | Both skins at 0.249 s with no sword | Placeholder; harness assertion required |
-| Poses | Sit, Sleep, Kneel, Lay Down held; Meditate breathing | Placeholder; final-set review required |
-| Controls | Settings and first-person/camera views | Placeholder; release-sized UI capture required |
+Gallery frames are 1920×1080 with no debug screen, chat, or harness chrome.
+The icon is [icon-512.png](icon-512.png). Proof frames remain in
+[docs/proof](../proof/README.md).
 
-The parent reported E8 Fabric 1.21.11: 59/0 checks and 87 screenshots, including
-Steve/Alex backflip/worm/floss and spin/sleep/sit. That evidence predates this
-final set. E10 offline checks do not establish the new sword/Floss appearance.
+| Slot | Capture |
+| --- | --- |
+| Wheel | [store-wheel.png](shots/store-wheel.png) |
+| Wave, Steve | [store-wave-steve.png](shots/store-wave-steve.png) |
+| Floss, Alex | [store-floss-alex.png](shots/store-floss-alex.png) |
+| Backflip, Steve | [store-backflip-steve.png](shots/store-backflip-steve.png) |
+| Meditate, Steve | [store-meditate-steve.png](shots/store-meditate-steve.png) |
+| Sword salute, Steve | [store-sword-steve.png](shots/store-sword-steve.png) |
+| Sword salute, Alex | [store-sword-alex.png](shots/store-sword-alex.png) |
+| Multiplayer | [store-multiplayer.png](shots/store-multiplayer.png) |
 
 **Credits:** Emilio Schwaiger / QuarkOS (project); Blockato (all 41 animator
 emotes, chain clips and both props); Stretch authored with Codex assistance.

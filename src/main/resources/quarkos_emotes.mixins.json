@@ -12,6 +12,7 @@
     "LayerAccess",
     "GuiCaptureMixin",
     "CameraZoomMixin",
+    "PreviewOrbitMixin",
     "EmoteHandsMixin",
     "HarnessSkinMixin"
   ],

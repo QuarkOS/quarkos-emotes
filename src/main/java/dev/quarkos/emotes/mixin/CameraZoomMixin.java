@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Deterministic harness framing only; ordinary gameplay keeps vanilla's camera. */
 @Mixin(Camera.class)
@@ -17,8 +18,12 @@ public abstract class CameraZoomMixin {
     @Shadow private float yRot;
     @Shadow protected abstract void setPosition(double x,double y,double z);
     @Shadow protected abstract void setRotation(float yaw,float pitch);
-    @ModifyVariable(method="getMaxZoom",at=@At("HEAD"),argsOnly=true)
-    private float emotes$distance(float distance) { return ClientProofHooks.visual()?ClientProofHooks.distance():distance; }
+    @Inject(method="getMaxZoom",at=@At("RETURN"),cancellable=true)
+    private void emotes$distance(float distance,CallbackInfoReturnable<Float> cir) {
+        // Honor the portrait distance. Block clipping otherwise pulls a low
+        // camera into the head when the body is on the ground.
+        if(ClientProofHooks.visual()) cir.setReturnValue(ClientProofHooks.distance());
+    }
     //? if >=1.21.11 {
     @Inject(method="setup",at=@At("TAIL"))
     private void emotes$frame(net.minecraft.world.level.Level level,Entity entity,boolean detached,boolean reverse,float partial,CallbackInfo ci) {
@@ -37,6 +42,6 @@ public abstract class CameraZoomMixin {
         double yaw=Math.toRadians(entity.getYRot()),forward=ClientProofHooks.forward();
         setPosition(eye.x+dx*Math.cos(angle)-dz*Math.sin(angle)-Math.sin(yaw)*forward,pos.y-ClientProofHooks.drop(),
                 eye.z+dx*Math.sin(angle)+dz*Math.cos(angle)+Math.cos(yaw)*forward);
-        setRotation(yRot+ClientProofHooks.orbit(),xRot);
+        setRotation(yRot+ClientProofHooks.orbit(),xRot+ClientProofHooks.pitch());
     }
 }
