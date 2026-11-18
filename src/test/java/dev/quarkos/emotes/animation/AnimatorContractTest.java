@@ -143,7 +143,7 @@ class AnimatorContractTest {
             var file=directory.resolve(name);Files.createDirectories(file.getParent());Files.writeString(file,"{}");
         }
         assertEquals(Set.of("wave/wave.animation.json","legacy.json","flat.animation.json"),EmoteFiles.discover(directory).stream()
-                .map(directory::relativize).map(Path::toString).collect(java.util.stream.Collectors.toSet()));
+                .map(directory::relativize).map(p->p.toString().replace('\\','/')).collect(java.util.stream.Collectors.toSet()));
         assertTrue(EmoteFiles.animation("emotes/wave/wave.animation.json"));assertFalse(EmoteFiles.animation("emotes/wave/wave.quarkos.json"));
         String json="{\"animations\":{\"animation.emote.unrelated\":{\"animation_length\":1}}}";
         for(String file:List.of("emotes/my_dance.animation.json","my_dance.json")) {

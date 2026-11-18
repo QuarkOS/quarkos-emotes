@@ -33,7 +33,7 @@ class BatchFourTest {
                 "sit/sit_v2.animation.json","sit/clipcheck.json","sit/sit.quarkos.json","sit/prop.geo.json","sit/prop.png",
                 "sit/proof.gif","sit/author.bbmodel","_archive/sit/sit.animation.json","sit/_old/old/old.animation.json"));
         for(String path:paths) {var p=folder.resolve(path);Files.createDirectories(p.getParent());Files.writeString(p,"{}");}
-        assertEquals(expected,new HashSet<>(EmoteFiles.discover(folder).stream().map(folder::relativize).map(Path::toString).toList()));
+        assertEquals(expected,new HashSet<>(EmoteFiles.discover(folder).stream().map(folder::relativize).map(p->p.toString().replace('\\','/')).toList()));
         for(String path:paths)assertEquals(expected.contains(path),EmoteFiles.animation("emotes/"+path),path);
     }
     @Test void optionalFilesAttachOnlyToFolderMainAndHoldLoop() throws IOException {
