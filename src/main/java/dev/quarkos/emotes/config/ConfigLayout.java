@@ -1,5 +1,9 @@
 package dev.quarkos.emotes.config;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 /** Settings geometry and shared preview framing, in logical GUI pixels. */
 public final class ConfigLayout {
     private ConfigLayout() {}
@@ -18,11 +22,13 @@ public final class ConfigLayout {
         }
     }
 
-    public record Geometry(Box header, Box playback, Box sound, Box wheel, Box preview, int rowHeight, int headingHeight) {
+    public record Geometry(Box header, Box playback, Box sound, Box wheel, Box help, Box preview, int rowHeight, int headingHeight) {
         public Box row(Box section, int index) {
             return new Box(section.x() + 6, section.y() + headingHeight + index * rowHeight, section.w() - 12, rowHeight);
         }
     }
+
+    public record Choices(Box track, List<Box> segments) {}
 
     public record Fit(int scale, float yOffset, float yaw) {}
 
@@ -32,17 +38,54 @@ public final class ConfigLayout {
         int gap = height < 370 ? 6 : 10;
         int heading = height < 370 ? 15 : 21;
         int headerH = height < 370 ? 22 : 26;
-        int row = Math.clamp((height - headerH - 3 * gap - 3 * heading - 6 - 16) / 8, 15, 34);
-        int bodyHeight = row * 8 + (heading + 2) * 3 + gap * 2;
+        int helpHeight = 12;
+        int helpGap = 4;
+        int row = Math.clamp((height - headerH - 3 * gap - 3 * heading - 6 - 16 - helpGap - helpHeight) / 8, 15, 34);
+        int bodyHeight = row * 8 + (heading + 2) * 3 + gap * 2 + helpGap + helpHeight;
         int top = Math.max(5, (height - headerH - gap - bodyHeight) / 2);
         Box header = new Box(left, top, contentWidth, headerH);
         int optionsWidth = Math.min(contentWidth - gap - 92, Math.max(198, contentWidth * 3 / 5));
         int y = header.bottom() + gap;
         Box playback = new Box(left, y, optionsWidth, heading + 3 * row + 2);
         Box sound = new Box(left, playback.bottom() + gap, optionsWidth, heading + 2 * row + 2);
-        Box wheel = new Box(left, sound.bottom() + gap, optionsWidth, heading + 3 * row + 2);
+        Box wheel = new Box(left, sound.bottom() + gap, optionsWidth, heading + 3 * row + 2 + helpGap + helpHeight);
+        Box help = new Box(left + 9, wheel.bottom() - helpHeight - 2, optionsWidth - 18, helpHeight);
         Box preview = new Box(playback.right() + gap, y, contentWidth - optionsWidth - gap, bodyHeight);
-        return new Geometry(header, playback, sound, wheel, preview, row, heading);
+        return new Geometry(header, playback, sound, wheel, help, preview, row, heading);
+    }
+
+    static Choices choices(Box row, int rowLabelWidth, int... optionWidths) {
+        int count = optionWidths.length;
+        int textPadding = 4;
+        int textWidth = Arrays.stream(optionWidths).sum();
+        int preferred = Math.max(114, textWidth + 12 * count + 2);
+        int minimum = textWidth + textPadding * count + 2;
+        int labelRoom = Math.min(rowLabelWidth + 10, row.w() / 2);
+        // Give back extra label-column space before truncating a choice.
+        int available = Math.max(row.w() - labelRoom, Math.min(minimum, row.w() - 28));
+        int width = Math.min(preferred, available);
+        int height = Math.min(20, row.h() - 2);
+        Box track = new Box(row.right() - width, row.y() + (row.h() - height) / 2, width, height);
+
+        int room = width - 2 - textPadding * count;
+        int labelLimit = room;
+        // Cap the longest labels first so shorter choices still fit in full.
+        while (textWidth > room) {
+            labelLimit--;
+            textWidth = 0;
+            for (int optionWidth : optionWidths) textWidth += Math.min(optionWidth, labelLimit);
+        }
+        int extra = room - textWidth;
+        List<Box> segments = new ArrayList<>(count);
+        int offset = 0;
+        int measured = 0;
+        for (int i = 0; i < count; i++) {
+            measured += Math.min(optionWidths[i], labelLimit) + textPadding;
+            int end = measured + (i + 1) * extra / count;
+            segments.add(new Box(track.x() + 1 + offset, track.y() + 1, end - offset, track.h() - 2));
+            offset = end;
+        }
+        return new Choices(track, List.copyOf(segments));
     }
 
     /**
@@ -60,16 +103,5 @@ public final class ConfigLayout {
             case "backflip", "jump_hype" -> new Fit(Math.max(5, (int) (base * .76f)), .22f, 15f);
             default -> new Fit(base, .0625f, 0f);
         };
-    }
-
-    /** The tooltip may cover settings rows, and is bounded by the options column. */
-    public static Box placeTooltip(int screenWidth, int screenHeight, Box anchor, Box avoid, int tipWidth, int tipHeight) {
-        int rightLimit = Math.min(screenWidth - 4, avoid.x() - 4);
-        int width = Math.clamp(tipWidth, 1, rightLimit - 4);
-        int x = Math.clamp(anchor.x(), 4, rightLimit - width);
-        int height = Math.clamp(tipHeight, 1, screenHeight - 8);
-        int below = anchor.bottom() + 4;
-        int y = below + height <= screenHeight - 4 ? below : anchor.y() - height - 4;
-        return new Box(x, Math.clamp(y, 4, screenHeight - 4 - height), width, height);
     }
 }

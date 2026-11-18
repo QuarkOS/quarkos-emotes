@@ -7,25 +7,50 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class LayoutTest {
     @Test void wheelFillsLogicalScreensFromWindowAndGuiScale() {
-        int[][] windows = {{854, 480}, {960, 540}, {1280, 720}, {1920, 1080}, {2560, 1440}};
+        int[][] windows = {{320, 240}, {854, 480}, {960, 540}, {1280, 720}, {1920, 1080}, {2560, 1440}};
         for (int[] window : windows) for (int scale : new int[]{1, 2, 3, 4, 0}) {
             int w = WheelLayout.logicalWidth(window[0], window[1], scale);
             int h = WheelLayout.logicalHeight(window[0], window[1], scale);
             var layout = WheelLayout.of(w, h);
             var header = WheelLayout.header(w, h);
+            var screen = new Box(0, 0, w, h);
+            var toggle = WheelLayout.viewToggle(header, w);
+            var settings = WheelLayout.settings(toggle);
+            inside(settings, header);
+            assertTrue(settings.right() < toggle.x());
+            assertTrue(settings.right() <= w - 160, settings + " intersects the movement tutorial toast");
             assertTrue(layout.radius() >= 36, layout.toString());
             assertTrue(layout.cy() - layout.radius() > header.bottom(), layout.toString());
-            assertTrue(layout.cy() + layout.radius() < layout.pager().y(), layout.toString());
+            assertTrue(layout.cy() + layout.radius() < layout.hint().y(), layout.toString());
+            assertTrue(layout.hint().bottom() < layout.pager().y(), layout.toString());
+            assertTrue(layout.hint().bottom() <= h - 22);
             assertTrue(layout.cx() - layout.radius() >= 0 && layout.cx() + layout.radius() <= w);
             assertFalse(layout.pager().intersects(layout.scope()));
-            inside(layout.pager(), new Box(0, 0, w, h));
-            inside(layout.scope(), new Box(0, 0, w, h));
+            inside(layout.pager(), screen);
+            inside(layout.scope(), screen);
+            inside(layout.hint(), screen);
             assertTrue(layout.radius() * 2.0 / Math.min(w, h) >= .62, layout.toString());
+            for (int slot = 0; slot < WheelLayout.SLOTS; slot++) {
+                var wedge = layout.wedge(slot);
+                assertTrue(wedge.preview().w() >= 18 && wedge.preview().h() >= 21, wedge.toString());
+                assertTrue(wedge.markers().w() >= WheelLayout.BADGE_WIDTH + 2 + WheelLayout.STAR_WIDTH);
+                assertTrue(wedge.markers().bottom() <= wedge.preview().y());
+                assertTrue(wedge.preview().bottom() <= wedge.name().y());
+                for (Box box : new Box[]{wedge.markers(), wedge.preview(), wedge.name()}) {
+                    if (box.w() == 0) continue;
+                    for (int slide : new int[]{-layout.slideDistance(), layout.slideDistance()}) {
+                        insideWedge(layout, slot, new Box(box.x() + slide, box.y(), box.w(), box.h()));
+                    }
+                }
+            }
         }
         assertTrue(WheelLayout.of(WheelLayout.logicalWidth(1280, 720, 0), WheelLayout.logicalHeight(1280, 720, 0)).radius() >= 80);
         assertTrue(WheelLayout.of(1280, 720).radius() > 240);
         assertEquals(2, WheelLayout.effectiveScale(854, 480, 4));
         assertEquals(4, WheelLayout.effectiveScale(1920, 1080, 4));
+        var scale4 = WheelLayout.of(480, 270);
+        assertTrue(scale4.wedge(0).name().w() >= 24); // Wave
+        assertTrue(scale4.wedge(2).name().w() >= 21); // Clap
     }
 
     @Test void wedgesStartAtTwelveAndRespectAnnularHitAreaAtEdges() {
@@ -117,23 +142,40 @@ class LayoutTest {
         }
     }
 
-    @Test void configSectionsAndTooltipsStayOutOfThePreview() {
-        for (int[] size : new int[][]{{854, 480}, {1280, 720}, {1920, 1080}, {320, 240}, {427, 240}, {480, 270}, {640, 360}}) {
+    @Test void configHelpHasItsOwnLineAndSegmentsFitChoiceLabels() {
+        for (int[] size : new int[][]{{320, 240}, {427, 240}, {480, 270}, {640, 360}, {960, 540}, {1280, 720}, {1920, 1080}}) {
             var geo = ConfigLayout.geometry(size[0], size[1]);
             var screen = new Box(0, 0, size[0], size[1]);
-            for (Box region : new Box[]{geo.header(), geo.playback(), geo.sound(), geo.wheel(), geo.preview()}) {
-                inside(region, screen);
+            var regions = new Box[]{geo.header(), geo.playback(), geo.sound(), geo.wheel(), geo.preview()};
+            for (int i = 0; i < regions.length; i++) {
+                inside(regions[i], screen);
+                for (int j = i + 1; j < regions.length; j++) assertFalse(regions[i].intersects(regions[j]));
             }
             assertEquals(geo.wheel().bottom(), geo.preview().bottom());
             assertTrue(geo.playback().bottom() < geo.sound().y());
             assertTrue(geo.sound().bottom() < geo.wheel().y());
-            assertFalse(geo.preview().intersects(geo.playback()));
-            for (Box anchor : new Box[]{geo.row(geo.playback(), 0), geo.row(geo.wheel(), 2)}) {
-                var tip = ConfigLayout.placeTooltip(size[0], size[1], anchor, geo.preview(), 360, 48);
-                assertFalse(tip.intersects(geo.preview()), tip + " vs " + geo.preview());
-                inside(tip, screen);
-            }
+            inside(geo.help(), geo.wheel().inset(1));
+            assertTrue(geo.row(geo.wheel(), 2).bottom() < geo.help().y());
+            // Camera / Arms / Off, Hold / Click and Favourites / All in the vanilla font.
+            choicesFit(geo.row(geo.playback(), 0), 57, 36, 24, 16);
+            choicesFit(geo.row(geo.wheel(), 0), 53, 21, 22);
+            choicesFit(geo.row(geo.wheel(), 1), 58, 54, 12);
         }
+        var row = new Box(16, 20, 186, 16);
+        choicesFit(row, 120, 70, 45, 19);
+        var narrow = ConfigLayout.choices(row, 120, 500, 200, 13);
+        inside(narrow.track(), row);
+        int x = narrow.track().x() + 1;
+        for (Box segment : narrow.segments()) {
+            inside(segment, narrow.track().inset(1));
+            assertEquals(x, segment.x());
+            x = segment.right();
+        }
+        assertEquals(narrow.track().right() - 1, x);
+        assertTrue(narrow.segments().getLast().w() - 4 >= 13);
+    }
+
+    @Test void previewFramingAdaptsToSeatedAndPronePoses() {
         var standing = ConfigLayout.preview("quarkos_emotes:wave", 200, 180);
         var meditate = ConfigLayout.preview("quarkos_emotes:meditate", 200, 180);
         var pushups = ConfigLayout.preview("quarkos_emotes:pushups", 200, 180);
@@ -146,6 +188,30 @@ class LayoutTest {
 
     private static int hit(WheelLayout wheel, double distance, double angle) {
         return wheel.slotAt(wheel.cx() + distance * Math.cos(angle), wheel.cy() + distance * Math.sin(angle));
+    }
+
+    private static void insideWedge(WheelLayout wheel, int slot, Box box) {
+        for (int x : new int[]{box.x(), box.right()}) for (int y : new int[]{box.y(), box.bottom()}) {
+            assertEquals(slot, wheel.slotAt(x, y), box.toString());
+        }
+        int closestX = Math.clamp(wheel.cx(), box.x(), box.right());
+        int closestY = Math.clamp(wheel.cy(), box.y(), box.bottom());
+        assertEquals(slot, wheel.slotAt(closestX, closestY), box.toString());
+    }
+
+    private static void choicesFit(Box row, int rowLabelWidth, int... widths) {
+        var choices = ConfigLayout.choices(row, rowLabelWidth, widths);
+        inside(choices.track(), row);
+        assertEquals(row.right(), choices.track().right());
+        int x = choices.track().x() + 1;
+        for (int i = 0; i < widths.length; i++) {
+            Box segment = choices.segments().get(i);
+            inside(segment, choices.track().inset(1));
+            assertEquals(x, segment.x());
+            assertTrue(segment.w() - 4 >= widths[i], segment.toString());
+            x = segment.right();
+        }
+        assertEquals(choices.track().right() - 1, x);
     }
 
     private static void inside(Box box, Box bounds) {

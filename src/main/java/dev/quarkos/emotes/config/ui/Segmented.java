@@ -1,6 +1,7 @@
 package dev.quarkos.emotes.config.ui;
 
 import dev.quarkos.emotes.config.ConfigLayout.Box;
+import dev.quarkos.emotes.config.ConfigLayout.Choices;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -8,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
 import java.util.function.IntSupplier;
 
 public final class Segmented {
@@ -15,12 +17,20 @@ public final class Segmented {
 
     public Segmented(Font font, Box track, List<Component> options, IntSupplier value, IntConsumer select,
                      Consumer<FlatButton> add) {
+        this(font, track, options, value, select, add, index -> equalSegment(track, index, options.size()));
+    }
+
+    public Segmented(Font font, Choices layout, List<Component> options, IntSupplier value, IntConsumer select,
+                     Consumer<FlatButton> add) {
+        this(font, layout.track(), options, value, select, add, layout.segments()::get);
+    }
+
+    private Segmented(Font font, Box track, List<Component> options, IntSupplier value, IntConsumer select,
+                      Consumer<FlatButton> add, IntFunction<Box> bounds) {
         this.track = track;
         for (int i = 0; i < options.size(); i++) {
             int index = i;
-            int x = track.x() + 1 + i * (track.w() - 2) / options.size();
-            int right = track.x() + 1 + (i + 1) * (track.w() - 2) / options.size();
-            Box box = new Box(x, track.y() + 1, right - x, track.h() - 2);
+            Box box = bounds.apply(i);
             add.accept(new FlatButton(font, box, options.get(i), () -> select.accept(index)) {
                 @Override protected void paint(GuiGraphics g) {
                     boolean selected = value.getAsInt() == index;
@@ -31,6 +41,12 @@ public final class Segmented {
                 }
             });
         }
+    }
+
+    private static Box equalSegment(Box track, int index, int count) {
+        int x = track.x() + 1 + index * (track.w() - 2) / count;
+        int right = track.x() + 1 + (index + 1) * (track.w() - 2) / count;
+        return new Box(x, track.y() + 1, right - x, track.h() - 2);
     }
 
     public void render(GuiGraphics g) {

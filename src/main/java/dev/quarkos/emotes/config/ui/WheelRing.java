@@ -2,9 +2,12 @@ package dev.quarkos.emotes.config.ui;
 
 import dev.quarkos.emotes.animation.Emote;
 import dev.quarkos.emotes.config.ConfigLayout.Box;
+import dev.quarkos.emotes.config.EmoteWheelScreen;
 import dev.quarkos.emotes.config.WheelLayout;
+import dev.quarkos.emotes.config.WheelLayout.Wedge;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -18,12 +21,18 @@ public final class WheelRing {
 
     private final WheelLayout layout;
     private final List<Span> spans;
+    private final Wedge[] wedges = new Wedge[WheelLayout.SLOTS];
+    private final boolean compactNames;
+    private final float nameScale;
     private final float[] emphasis = new float[WheelLayout.SLOTS];
     private long lastFrame = System.nanoTime();
 
-    public WheelRing(WheelLayout layout) {
+    public WheelRing(WheelLayout layout, boolean compactNames) {
         this.layout = layout;
+        this.compactNames = compactNames;
+        this.nameScale = compactNames ? 1f : Math.clamp(layout.radius() / 175f, 1f, 1.15f);
         this.spans = buildSpans();
+        for (int slot = 0; slot < wedges.length; slot++) wedges[slot] = layout.wedge(slot);
     }
 
     private List<Span> buildSpans() {
@@ -58,7 +67,8 @@ public final class WheelRing {
         return outline ? slot + WheelLayout.SLOTS : slot;
     }
 
-    public void render(GuiGraphics g, Font font, List<Emote> emotes, int page, int hover, float slide, Predicate<String> starred) {
+    public void render(GuiGraphics g, Font font, LocalPlayer player, List<Emote> emotes, int page, int hover, int slide,
+                       Predicate<String> starred) {
         long now = System.nanoTime();
         float transition = Math.clamp((now - lastFrame) / 55_000_000f, .10f, 1f);
         lastFrame = now;
@@ -85,21 +95,37 @@ public final class WheelRing {
         }
         Ui.layer(g);
 
-        float scale = layout.contentScale();
-        double orbit = (layout.innerRadius() + layout.radius()) * .5;
         for (int slot = 0; slot < WheelLayout.SLOTS; slot++) {
             int index = WheelLayout.slotIndex(page, slot, emotes.size());
             if (index < 0) break;
             Emote emote = emotes.get(index);
-            double angle = layout.angle(slot);
-            float x = layout.cx() + (float) (Math.cos(angle) * orbit) + slide;
-            float y = layout.cy() + (float) (Math.sin(angle) * orbit);
-            EmoteIcon.draw(g, emote, x, y - 4 * scale, scale);
-            Ui.push(g, x, y + 7 * scale, Math.max(1, scale * .7f));
-            Ui.center(g, font, Component.literal(Integer.toString(slot + 1)), new Box(-8, 0, 16, 10), Ui.TEXT);
-            if (starred.test(emote.id())) StarToggle.glyph(g, font, new Box(7, 0, 9, 10), true);
-            Ui.pop(g);
+            Wedge wedge = wedges[slot];
+            EmotePreview.draw(g, slide(wedge.preview(), slide), player, emote, EmotePreview.stillTime(emote), 14);
+            Box name = slide(wedge.name(), slide);
+            Component label = EmoteWheelScreen.label(emote);
+            if (name.w() > 0 && (!compactNames || font.width(label) <= name.w())) {
+                Ui.heading(g, font, label, name, nameScale, true);
+            }
+            drawMarkers(g, font, slide(wedge.markers(), slide), slot, starred.test(emote.id()));
         }
+    }
+
+    private static void drawMarkers(GuiGraphics g, Font font, Box markers, int slot, boolean starred) {
+        if (markers.w() < WheelLayout.BADGE_WIDTH) return;
+        int badgeWidth = WheelLayout.BADGE_WIDTH;
+        int starWidth = WheelLayout.STAR_WIDTH;
+        boolean showStar = starred && markers.w() >= badgeWidth + 2 + starWidth;
+        int x = showStar ? markers.x() : markers.x() + (markers.w() - badgeWidth) / 2;
+        Box badge = new Box(x, markers.y(), badgeWidth, markers.h());
+        Ui.softRect(g, badge, Ui.WELL);
+        Ui.center(g, font, Component.literal(Integer.toString(slot + 1)), badge, Ui.MUTED);
+        if (showStar) {
+            StarToggle.glyph(g, font, new Box(markers.right() - starWidth, markers.y(), starWidth, markers.h()), true);
+        }
+    }
+
+    private static Box slide(Box box, int offset) {
+        return new Box(box.x() + offset, box.y(), box.w(), box.h());
     }
 
     private static int mix(int a, int b, float progress) {

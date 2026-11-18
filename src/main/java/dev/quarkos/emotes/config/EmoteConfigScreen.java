@@ -36,6 +36,9 @@ public final class EmoteConfigScreen extends Screen {
     private int saveIn;
     private long confirmUntil;
 
+    /** Capture a row's help when the harness cannot move the cursor. */
+    public boolean harnessHoverSound;
+
     public EmoteConfigScreen(Screen parent) {
         super(Component.translatable("screen.quarkos_emotes.config"));
         this.parent = parent;
@@ -51,7 +54,7 @@ public final class EmoteConfigScreen extends Screen {
                 Component.translatable("gui.done"), true, this::onClose));
 
         Box playback = geometry.playback();
-        segmented(geometry.row(playback, 0), "first_person", 114,
+        segmented(geometry.row(playback, 0), "first_person",
                 List.of(value("camera_short"), value("arms_short"), value("off_short")), () -> config.firstPerson.ordinal(), i -> {
                     config.firstPerson = EmoteConfig.FirstPerson.values()[i];
                     persist();
@@ -73,12 +76,12 @@ public final class EmoteConfigScreen extends Screen {
             config.soundVolume = (float) amount;
             saveIn = 6;
         }));
-        segmented(geometry.row(wheel, 0), "wheel_mode", 114, List.of(value("hold_short"), value("click_short")),
+        segmented(geometry.row(wheel, 0), "wheel_mode", List.of(value("hold_short"), value("click_short")),
                 () -> config.holdWheel ? 0 : 1, i -> {
                     config.holdWheel = i == 0;
                     persist();
                 });
-        segmented(geometry.row(wheel, 1), "wheel_content", 114, List.of(Ui.text("favorites"), Ui.text("all")),
+        segmented(geometry.row(wheel, 1), "wheel_content", List.of(Ui.text("favorites"), Ui.text("all")),
                 () -> config.wheelFavoritesOnly ? 0 : 1, i -> {
                     config.wheelFavoritesOnly = i == 0;
                     persist();
@@ -102,9 +105,10 @@ public final class EmoteConfigScreen extends Screen {
         return new Box(row.right() - controlWidth, row.y() + (row.h() - height) / 2, controlWidth, height);
     }
 
-    private void segmented(Box row, String key, int width, List<Component> labels, IntSupplier current, IntConsumer change) {
-        Box control = rightControl(row, width);
-        rows.add(new Row(row, key, control.x() - row.x() - 4));
+    private void segmented(Box row, String key, List<Component> labels, IntSupplier current, IntConsumer change) {
+        int[] widths = labels.stream().mapToInt(label -> font.width(label.getString())).toArray();
+        var control = ConfigLayout.choices(row, font.width(option(key).getString()), widths);
+        rows.add(new Row(row, key, control.track().x() - row.x() - 7));
         segments.add(new Segmented(font, control, labels, current, change, this::addRenderableWidget));
     }
 
@@ -189,7 +193,12 @@ public final class EmoteConfigScreen extends Screen {
         Ui.label(g, font, Component.literal(volume.percent()), volumeValue, Ui.MUTED);
         renderPreview(g, partial);
         super.render(g, mouseX, mouseY, partial);
-        drawTooltip(g, mouseX, mouseY);
+        if (harnessHoverSound) {
+            Box sound = geometry.row(geometry.sound(), 0);
+            drawHelp(g, sound.x(), sound.y());
+        } else {
+            drawHelp(g, mouseX, mouseY);
+        }
     }
 
     private void group(GuiGraphics g, Box section, String key) {
@@ -212,22 +221,11 @@ public final class EmoteConfigScreen extends Screen {
         Ui.center(g, font, Ui.text("drag_preview"), new Box(portrait.x(), portrait.bottom() + 12, portrait.w(), 10), Ui.MUTED);
     }
 
-    private void drawTooltip(GuiGraphics g, int mx, int my) {
+    private void drawHelp(GuiGraphics g, int mx, int my) {
         for (Row row : rows) {
             if (!row.box().contains(mx, my)) continue;
             Component message = Component.translatable("tooltip.quarkos_emotes." + row.key());
-            var lines = font.split(message, geometry.playback().w() - 16);
-            int textWidth = 0;
-            for (var line : lines) textWidth = Math.max(textWidth, font.width(line));
-            Box tip = ConfigLayout.placeTooltip(width, height, row.box(), geometry.preview(), textWidth + 10,
-                    lines.size() * font.lineHeight + 8);
-            Ui.layer(g);
-            Ui.panel(g, tip, Ui.GROUND, Ui.HOVER);
-            int y = tip.y() + 4;
-            for (var line : lines) {
-                g.drawString(font, line, tip.x() + 5, y, Ui.TEXT, false);
-                y += font.lineHeight;
-            }
+            Ui.label(g, font, message, geometry.help(), Ui.MUTED);
             return;
         }
     }

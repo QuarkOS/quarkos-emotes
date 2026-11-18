@@ -58,17 +58,19 @@ public final class EmoteWheelScreen extends Screen {
 
     @Override protected void init() {
         Box header = WheelLayout.header(width, height);
-        int modeWidth = header.w() < 400 ? 93 : 116;
-        Box mode = new Box(width / 2 - modeWidth / 2, header.y(), modeWidth, header.h());
-        titleBox = new Box(header.x(), header.y(), mode.x() - header.x() - 8, header.h());
+        Box mode = WheelLayout.viewToggle(header, width);
+        Box settings = view == MenuView.WHEEL ? WheelLayout.settings(mode)
+                : new Box(header.right() - 74, header.y(), 74, header.h());
+        int titleRight = view == MenuView.WHEEL ? settings.x() - 6 : mode.x() - 8;
+        titleBox = new Box(header.x(), header.y(), titleRight - header.x(), header.h());
         views = new Segmented(font, mode, List.of(Ui.text("wheel"), Ui.text("grid")), view::ordinal,
                 this::changeView, this::addRenderableWidget);
-        addRenderableWidget(new FlatButton(font, new Box(header.right() - 74, header.y(), 74, header.h()), Ui.text("settings"),
+        addRenderableWidget(new FlatButton(font, settings, Ui.text("settings"),
                 () -> minecraft.setScreen(new EmoteConfigScreen(this))));
 
         if (view == MenuView.WHEEL) {
             wheel = WheelLayout.of(width, height);
-            ring = new WheelRing(wheel);
+            ring = new WheelRing(wheel, minecraft.getWindow().getGuiScale() >= 4);
             wheelScope = new Segmented(font, wheel.scope(), List.of(Ui.text("favorites"), Ui.text("all")),
                     () -> EmoteConfig.get().wheelFavoritesOnly ? 0 : 1, this::changeScope, this::addRenderableWidget);
             Box pager = wheel.pager();
@@ -179,8 +181,8 @@ public final class EmoteWheelScreen extends Screen {
         int hover = harnessHover >= 0 ? harnessHover : wheel.slotAt(mouseX, mouseY);
         Emote hovered = atSlot(hover);
         float phase = 1 - Math.clamp((System.nanoTime() - pageChanged) / 140_000_000f, 0f, 1f);
-        float slide = pageDirection * phase * phase * Math.min(9, wheel.radius() * .055f);
-        ring.render(g, font, wheelItems, page, hover, slide, EmoteConfig.get().favorites::contains);
+        int slide = Math.round(pageDirection * phase * phase * wheel.slideDistance());
+        ring.render(g, font, minecraft.player, wheelItems, page, hover, slide, EmoteConfig.get().favorites::contains);
         int span = (int) (wheel.innerRadius() * 1.8);
         int cx = wheel.cx(), cy = wheel.cy();
         Component name = hovered != null ? label(hovered) : wheelItems.isEmpty() ? Ui.text("nothing_on_wheel") : Ui.text("pick_emote");
@@ -191,15 +193,32 @@ public final class EmoteWheelScreen extends Screen {
             EmotesClient.selected = hovered.id();
             if (hold && font.width(help) > span) help = Ui.text("release");
         }
-        float nameScale = Math.clamp(wheel.radius() / 77f, 1f, 2.3f);
-        Ui.heading(g, font, name, new Box(cx - span / 2, cy - 20, span, 20), nameScale, true);
+        renderHubName(g, name, new Box(cx - span / 2, cy - 20, span, 20), hovered != null);
         if (!wheelItems.isEmpty() || EmoteConfig.get().wheelFavoritesOnly) {
             Ui.center(g, font, help, new Box(cx - span / 2, cy + 3, span, 12), Ui.MUTED);
         }
 
         wheelScope.render(g);
         renderDots(g);
-        Ui.center(g, font, Ui.text("wheel_help"), new Box(8, wheel.helpY(), width - 16, 10), Ui.MUTED);
+        Ui.center(g, font, Ui.text("wheel_help"), wheel.hint(), Ui.MUTED);
+    }
+
+    private void renderHubName(GuiGraphics g, Component name, Box box, boolean hovered) {
+        float scale = Math.clamp(wheel.radius() / 77f, 1f, 2.3f);
+        int textWidth = font.width(name);
+        if (hovered && textWidth > box.w()) {
+            var lines = font.split(name, box.w());
+            if (lines.size() == 2) {
+                int y = box.y() + (box.h() - 2 * font.lineHeight) / 2;
+                for (var line : lines) {
+                    g.drawString(font, line, box.x() + (box.w() - font.width(line)) / 2, y, Ui.TEXT, false);
+                    y += font.lineHeight;
+                }
+                return;
+            }
+        }
+        if (hovered) scale = Math.clamp((float) box.w() / Math.max(1, textWidth), 1f, scale);
+        Ui.heading(g, font, name, box, scale, true);
     }
 
     private void renderDots(GuiGraphics g) {

@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screens.*;
 import net.minecraft.client.gui.screens.worldselection.*;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.tutorial.TutorialSteps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -27,6 +28,7 @@ public final class ClientHarness {
             new UiShot("ui-grid", 1920, 1080, 2),
             new UiShot("ui-grid-search", 1920, 1080, 2),
             new UiShot("ui-settings", 1920, 1080, 2),
+            new UiShot("ui-settings-scale4", 1920, 1080, 4),
             new UiShot("ui-grid-small", 960, 540, 2));
     private static UiFixture uiFixture;
     private static Stage stage=Stage.TITLE;
@@ -117,7 +119,9 @@ public final class ClientHarness {
         try {
             if(!optionsReady) {
                 optionsReady=true;mc.options.onboardAccessibility=false;mc.options.guiScale().set(GUI_SCALE);
-                mc.options.save();mc.resizeDisplay();
+                // This also saves options and clears an active tutorial step.
+                mc.getTutorial().setStep(TutorialSteps.NONE);
+                mc.resizeDisplay();
             }
             if(mc.screen instanceof AccessibilityOnboardingScreen) {
                 mc.options.onboardAccessibility=false;mc.options.save();mc.setScreen(new TitleScreen());stage=Stage.TITLE;ticks=0;return;
@@ -315,19 +319,18 @@ public final class ClientHarness {
                     var card = layout.cards().card(1, 0);
                     cursor(mc, card.x() + card.w() / 2.0, card.y() + card.h() / 2.0);
                 }
-            } else if (shot.ui().startsWith("ui-config") || shot.ui().equals("ui-settings")) {
+            } else if (shot.ui().startsWith("ui-config") || shot.ui().startsWith("ui-settings")) {
                 EmotesClient.selected = shot.id();
                 var settings = new EmoteConfigScreen(null);
                 mc.setScreen(settings);
+                settings.harnessHoverSound = ui != null;
                 if (ui == null) {
                     var emote = EmoteResources.REGISTRY.get(shot.id());
                     if (emote != null) settings.freezePreview(poseTime(emote));
-                    var geo = ConfigLayout.geometry(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-                    var row = geo.row(geo.playback(), 0);
-                    cursor(mc, row.x() + row.w() / 2.0, row.y() + row.h() / 2.0);
-                } else {
-                    cursor(mc, 2, 2);
                 }
+                var geo = ConfigLayout.geometry(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+                var row = geo.row(ui == null ? geo.playback() : geo.sound(), 0);
+                cursor(mc, row.x() + row.w() / 2.0, row.y() + row.h() / 2.0);
             }
             LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_SHOT name={} time={} camera={} distance={} orbit={} guiScale={} effectiveScale={}",
                     shot.name(),p==null?0:p.time(0),mc.options.getCameraType(),portraitDistance,portraitOrbit,mc.options.guiScale().get(),mc.getWindow().getGuiScale());
