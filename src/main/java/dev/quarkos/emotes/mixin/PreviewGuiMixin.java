@@ -7,10 +7,17 @@ import dev.quarkos.emotes.config.ui.EmotePreview;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.gui.render.pip.GuiEntityRenderer;
+//? if >=26.3 {
+/*import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
+import net.minecraft.client.renderer.state.gui.GuiRenderState;
+import net.minecraft.client.renderer.state.gui.pip.GuiEntityRenderState;
+import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
+*///?} else {
 import net.minecraft.client.gui.render.state.GuiRenderState;
 import net.minecraft.client.gui.render.state.pip.GuiEntityRenderState;
 import net.minecraft.client.gui.render.state.pip.PictureInPictureRenderState;
 import net.minecraft.client.renderer.MultiBufferSource;
+//?}
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -27,8 +34,13 @@ import java.util.List;
 *///?}
 public abstract class PreviewGuiMixin {
     //? if >=1.21.11 {
+    //? if >=26.3 {
+    /*@Shadow @Final private GuiRenderState renderState;
+    @Shadow @Final private FeatureRenderDispatcher featureRenderDispatcher;
+    *///?} else {
     @Shadow @Final GuiRenderState renderState;
     @Shadow @Final private MultiBufferSource.BufferSource bufferSource;
+    //?}
 
     @Unique private final List<GuiEntityRenderer> emotes$previews = new ArrayList<>();
     @Unique private int emotes$usedPreviews;
@@ -48,10 +60,18 @@ public abstract class PreviewGuiMixin {
         // emote needs its own until the GUI has blitted all of them.
         int index = emotes$usedPreviews++;
         if (index == emotes$previews.size()) {
+            //? if >=26.3 {
+            /*emotes$previews.add(new GuiEntityRenderer(Minecraft.getInstance().getEntityRenderDispatcher()));
+            *///?} else {
             emotes$previews.add(new GuiEntityRenderer(bufferSource, Minecraft.getInstance().getEntityRenderDispatcher()));
+            //?}
         }
         GuiEntityRenderer renderer = emotes$previews.get(index);
+        //? if >=26.3 {
+        /*EmotePreview.withSample(sample, () -> renderer.prepare(entity, renderState, featureRenderDispatcher, scale));
+        *///?} else {
         EmotePreview.withSample(sample, () -> renderer.prepare(entity, renderState, scale));
+        //?}
         ci.cancel();
     }
 

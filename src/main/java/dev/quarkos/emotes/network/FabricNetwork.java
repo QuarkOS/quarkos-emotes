@@ -19,8 +19,13 @@ public final class FabricNetwork {
     }
     public static void init() {
         if(ServerSync.disabled())return;
+        //? if >=26.1 {
+        /*PayloadTypeRegistry.serverboundPlay().register(Request.TYPE,Request.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Broadcast.TYPE,Broadcast.CODEC);
+        *///?} else {
         PayloadTypeRegistry.playC2S().register(Request.TYPE,Request.CODEC);
         PayloadTypeRegistry.playS2C().register(Broadcast.TYPE,Broadcast.CODEC);
+        //?}
         ServerSync.sender=(target,player,id,elapsed)-> {
             if(ServerPlayNetworking.canSend(target,Broadcast.TYPE))ServerPlayNetworking.send(target,new Broadcast(player,id,elapsed));
         };

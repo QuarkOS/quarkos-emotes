@@ -14,7 +14,11 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
+//? if >=26.3 {
+/*import com.mojang.blaze3d.platform.InputConstants;
+*///?} else {
 import org.lwjgl.glfw.GLFW;
+//?}
 
 import java.util.List;
 
@@ -165,7 +169,11 @@ public final class EmoteWheelScreen extends Screen {
     // The screen draws its own scrim in render on both versions.
     @Override public void renderBackground(GuiGraphics g, int x, int y, float partial) {}
 
+    //? if >=26.1 {
+    /*@Override public void extractRenderState(GuiGraphics g, int mouseX, int mouseY, float partial) {
+    *///?} else {
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
+    //?}
         g.fill(0, 0, width, height, minecraft.level == null ? Ui.GROUND : Ui.SCRIM);
         Ui.layer(g);
         float titleScale = titleBox.w() >= 145 ? 1.45f : 1.18f;
@@ -173,7 +181,11 @@ public final class EmoteWheelScreen extends Screen {
         views.render(g);
         if (view == MenuView.WHEEL) renderWheel(g, mouseX, mouseY);
         else library.renderPanels(g, mouseX, mouseY, partial);
+        //? if >=26.1 {
+        /*super.extractRenderState(g, mouseX, mouseY, partial);
+        *///?} else {
         super.render(g, mouseX, mouseY, partial);
+        //?}
         if (view == MenuView.GRID) library.renderTooltip(g, mouseX, mouseY);
     }
 

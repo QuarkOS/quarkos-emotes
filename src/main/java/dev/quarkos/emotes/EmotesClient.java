@@ -12,7 +12,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.*;
 import net.minecraft.util.RandomSource;
 import java.util.*;
+//? if <26.3 {
 import org.lwjgl.glfw.GLFW;
+//?}
 public final class EmotesClient {
     public static final String MOD_ID="quarkos_emotes";
     //? if >=1.21.11 {
@@ -86,7 +88,13 @@ public final class EmotesClient {
         lastPosition=mc.player.position();
         boolean shared=sender.apply(id);sharedLocal=shared;
         if(!shared&&!mc.hasSingleplayerServer()&&!hinted) {
-            hinted=true;hintCount++; mc.player.displayClientMessage(Component.translatable("text.quarkos_emotes.local_only"),false);
+            hinted=true;
+            hintCount++;
+            //? if >=26.1 {
+            /*mc.player.sendSystemMessage(Component.translatable("text.quarkos_emotes.local_only"));
+            *///?} else {
+            mc.player.displayClientMessage(Component.translatable("text.quarkos_emotes.local_only"),false);
+            //?}
         }
     }
     public static void preview(String id) {

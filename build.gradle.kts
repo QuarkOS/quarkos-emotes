@@ -5,6 +5,12 @@ plugins {
 version = "${property("mod.version")}+${sc.current.version}"
 base.archivesName = "quarkos_emotes-fabric"
 
+val unobfuscated = sc.current.parsed >= "26.1"
+val requiredJava = if (unobfuscated) JavaVersion.VERSION_25 else JavaVersion.VERSION_21
+val deferredHands = sc.current.parsed >= "26.3"
+val handAccessWidener = "accesswidener/26.3/quarkos_emotes.accesswidener"
+val handAccessWidenerFile = rootProject.file("gradle/$handAccessWidener")
+
 repositories {
     mavenCentral()
     exclusiveContent {
@@ -15,6 +21,7 @@ repositories {
 
 dependencies {
     minecraft("com.mojang:minecraft:${sc.current.version}")
+    // Loom Back Compat selects the non-remapping Loom plugin and skips mappings on 26.x.
     loomx.applyMojangMappings()
     modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${sc.properties.get<String>("deps.fabric_api")}")
@@ -26,6 +33,10 @@ dependencies {
 }
 
 loom {
+    if (deferredHands) {
+        fabricModJsonPath = rootProject.file("src/main/resources/fabric.mod.json")
+        accessWidenerPath = handAccessWidenerFile
+    }
     runConfigs.all {
         preferGradleTask = true
         generateRunConfig = true
@@ -39,8 +50,10 @@ loom {
 
 java {
     withSourcesJar()
+    sourceCompatibility = requiredJava
+    targetCompatibility = requiredJava
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(requiredJava.majorVersion)
     }
 }
 
@@ -59,15 +72,16 @@ tasks.named("sourcesJar") { dependsOn("stonecutterGenerate") }
 val writePack = tasks.register("writePackMeta") {
     val out = layout.buildDirectory.file("generated/pack/pack.mcmeta")
     outputs.file(out)
-    val meta = if (sc.current.parsed >= "1.21.9") {
-        """{"pack":{"description":"QuarkOS Emotes","min_format":[75,0],"max_format":[75,0]}}""" + "\n"
-    } else {
-        """{"pack":{"description":"QuarkOS Emotes","pack_format":34}}""" + "\n"
+    val meta = when {
+        sc.current.parsed >= "26.3" -> """{"pack":{"description":"QuarkOS Emotes","min_format":[97,1],"max_format":[97,1]}}"""
+        sc.current.parsed >= "1.21.9" -> """{"pack":{"description":"QuarkOS Emotes","min_format":[75,0],"max_format":[75,0]}}"""
+        else -> """{"pack":{"description":"QuarkOS Emotes","pack_format":34}}"""
     }
+    inputs.property("packMetadata", meta)
     doLast {
         val file = out.get().asFile
         file.parentFile.mkdirs()
-        file.writeText(meta)
+        file.writeText(meta + "\n")
     }
 }
 
@@ -80,12 +94,26 @@ tasks {
             "name" to sc.properties.get<String>("mod.name"),
             "version" to "${sc.properties.get<String>("mod.version")}+$minecraftVersion",
             "minecraft" to sc.properties.get<String>("mod.mc_compat"),
+            "java" to ">=${requiredJava.majorVersion}",
+            "accessWidener" to handAccessWidener,
         )
         inputs.properties(props)
         exclude("META-INF/mods.toml")
-        exclude("pack.mcmeta")
+        if (deferredHands) {
+            from(handAccessWidenerFile) { into(handAccessWidener.substringBeforeLast('/')) }
+        } else {
+            exclude("pack.mcmeta")
+        }
         filesMatching("fabric.mod.json") {
             expand(props)
+            if (!deferredHands) {
+                filter { line: String -> line.takeUnless { it.trimStart().startsWith("\"accessWidener\":") } }
+            }
+        }
+        if (unobfuscated) {
+            filesMatching("quarkos_emotes.mixins.json") {
+                filter { line: String -> line.replace("\"JAVA_21\"", "\"JAVA_${requiredJava.majorVersion}\"") }
+            }
         }
         from(layout.buildDirectory.dir("generated/pack"))
     }

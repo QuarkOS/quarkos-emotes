@@ -9,9 +9,46 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+//? if >=26.3 {
+/*import net.minecraft.client.model.geom.PartPose;
+import org.spongepowered.asm.mixin.Unique;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+*///?}
 @Mixin(AvatarRenderer.class)
 public abstract class FirstPersonMixin {
-    //? if >=1.21.11 {
+    //? if >=26.3 {
+    /*@ModifyArg(method = "renderHand", at = @At(value = "INVOKE", target =
+            "Lnet/minecraft/client/renderer/SubmitNodeCollector;submitModelPart("
+            + "Lnet/minecraft/client/model/geom/ModelPart;Lcom/mojang/blaze3d/vertex/PoseStack;"
+            + "Lnet/minecraft/client/renderer/rendertype/RenderType;II"
+            + "Lnet/minecraft/client/renderer/texture/UvMapping;)V"), index = 0)
+    private ModelPart emotes$arm(ModelPart arm) {
+        var player = Minecraft.getInstance().player;
+        if (player == null || EmoteConfig.get().firstPerson != EmoteConfig.FirstPerson.SHOW_ARMS
+                || EmotesClient.player(player.getUUID()) == null) return arm;
+
+        var model = ((AvatarRenderer<?>)(Object)this).getModel();
+        // The collector reads the part later. The other hand can change the shared model first.
+        ModelPart posed = emotes$copyPart(arm);
+        apply(posed, arm == model.rightArm ? "right_arm" : "left_arm");
+        return posed;
+    }
+
+    @Unique
+    private static ModelPart emotes$copyPart(ModelPart part) {
+        Map<String, ModelPart> children = new LinkedHashMap<>();
+        part.children.forEach((name, child) -> children.put(name, emotes$copyPart(child)));
+        ModelPart copy = new ModelPart(part.cubes, children);
+        copy.setInitialPose(part.getInitialPose());
+        copy.loadPose(new PartPose(part.x, part.y, part.z, part.xRot, part.yRot, part.zRot,
+                part.xScale, part.yScale, part.zScale));
+        copy.visible = part.visible;
+        copy.skipDraw = part.skipDraw;
+        return copy;
+    }
+    *///?} elif >=1.21.11 {
     @Inject(method="renderHand",at=@At(value="INVOKE",target="Lnet/minecraft/client/renderer/SubmitNodeCollector;submitModelPart(Lnet/minecraft/client/model/geom/ModelPart;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/rendertype/RenderType;IILnet/minecraft/client/renderer/texture/TextureAtlasSprite;)V"))
     private void emotes$arm(PoseStack stack,net.minecraft.client.renderer.SubmitNodeCollector collector,int light,net.minecraft.resources.Identifier skin,ModelPart arm,boolean sleeve,CallbackInfo ci) {
         var model=((AvatarRenderer<?>)(Object)this).getModel();apply(arm,arm==model.rightArm?"right_arm":"left_arm");

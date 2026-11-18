@@ -7,6 +7,12 @@ public final class ServerHarness implements dev.quarkos.emotes.network.ServerPro
     /** Names, not player objects. Respawn and dimension change replace the object and must not yank the player home. */
     private static final Set<String> PLACED=new HashSet<>();
     private static boolean rules;
+    //? if >=26.3 {
+    /*static void setNoon(MinecraftServer server) {
+        var clock = server.registryAccess().getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+        server.clockManager().setTotalTicks(clock, 6000);
+    }
+    *///?}
     public void tick(MinecraftServer server) {
         if(!Boolean.getBoolean("quarkos_emotes.serverHarness"))return;
         var source=server.createCommandSourceStack();
@@ -33,7 +39,11 @@ public final class ServerHarness implements dev.quarkos.emotes.network.ServerPro
             server.getCommands().performPrefixedCommand(source,"gamemode creative "+name);
             server.getCommands().performPrefixedCommand(source,"op "+name);
             if(Boolean.getBoolean("quarkos_emotes.cleanNames")) server.getCommands().performPrefixedCommand(source,"team join qe "+name);
+            //? if >=26.3 {
+            /*setNoon(server);
+            *///?} else {
             server.getCommands().performPrefixedCommand(source,"time set noon");
+            //?}
             server.getCommands().performPrefixedCommand(source,"weather clear");
         }
     }

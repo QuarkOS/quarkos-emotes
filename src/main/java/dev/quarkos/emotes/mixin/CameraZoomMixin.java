@@ -24,7 +24,15 @@ public abstract class CameraZoomMixin {
         // camera into the head when the body is on the ground.
         if(ClientProofHooks.visual()) cir.setReturnValue(ClientProofHooks.distance());
     }
-    //? if >=1.21.11 {
+    //? if >=26.3 {
+    /*@Shadow private Entity entity;
+    @Shadow private boolean detached;
+
+    @Inject(method = "alignWithEntity(F)V", at = @At("TAIL"))
+    private void emotes$frame(float partial, CallbackInfo ci) {
+        frame(entity, detached, partial);
+    }
+    *///?} elif >=1.21.11 {
     @Inject(method="setup",at=@At("TAIL"))
     private void emotes$frame(net.minecraft.world.level.Level level,Entity entity,boolean detached,boolean reverse,float partial,CallbackInfo ci) {
         frame(entity,detached,partial);

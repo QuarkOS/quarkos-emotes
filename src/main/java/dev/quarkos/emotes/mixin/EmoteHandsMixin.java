@@ -5,19 +5,51 @@ import dev.quarkos.emotes.EmotesClient;
 import dev.quarkos.emotes.config.EmoteConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+//? if >=26.3 {
+/*import net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
+import net.minecraft.client.renderer.state.level.PlayerRenderState;
+*///?} else {
 import net.minecraft.client.renderer.ItemInHandRenderer;
+//?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Render gestures in player axes instead of adding them to vanilla's item-holding wrist transform. */
+//? if >=26.3 {
+/*@Mixin(FirstPersonHandsAndItemsRenderer.class)
+*///?} else {
 @Mixin(ItemInHandRenderer.class)
+//?}
 public abstract class EmoteHandsMixin {
     private static boolean animated(LocalPlayer player) {
         return player!=null&&!player.isInvisible()&&EmoteConfig.get().firstPerson==EmoteConfig.FirstPerson.SHOW_ARMS
                 &&EmotesClient.player(player.getUUID())!=null;
     }
-    //? if >=1.21.11 {
+    //? if >=26.3 {
+    /*@Inject(method = "submitHandsWithItems", at = @At("HEAD"), cancellable = true)
+    private void emotes$hands(float partial, PoseStack pose, SubmitNodeCollector collector, PlayerRenderState playerState,
+                              FirstPersonHandsAndItemsRenderState hands, CallbackInfo ci) {
+        var client = Minecraft.getInstance();
+        var avatar = playerState.avatarRenderState;
+        if (avatar == null || !animated(client.player) || avatar.id != client.player.getId()) return;
+
+        var renderer = client.getEntityRenderDispatcher().getRenderer(avatar);
+        var skin = avatar.skin.body().texturePath();
+        pose.pushPose();
+        try {
+            pose.translate(0, -.375, -1.15);
+            pose.scale(-1, -1, 1);
+            renderer.renderRightHand(pose, collector, avatar.lightCoords, skin, avatar.showRightSleeve);
+            renderer.renderLeftHand(pose, collector, avatar.lightCoords, skin, avatar.showLeftSleeve);
+        } finally {
+            pose.popPose();
+        }
+        ci.cancel();
+    }
+    *///?} elif >=1.21.11 {
     @Inject(method="renderHandsWithItems",at=@At("HEAD"),cancellable=true)
     private void emotes$hands(float partial,PoseStack pose,net.minecraft.client.renderer.SubmitNodeCollector collector,LocalPlayer player,int light,CallbackInfo ci) {
         if(!animated(player))return;

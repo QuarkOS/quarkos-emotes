@@ -15,7 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(InventoryScreen.class)
 public abstract class PreviewInventoryMixin {
     //? if >=1.21.11 {
+    //? if >=26.1 {
+    /*@Inject(method = "extractRenderState(Lnet/minecraft/world/entity/LivingEntity;)"
+            + "Lnet/minecraft/client/renderer/entity/state/EntityRenderState;", at = @At("RETURN"))
+    *///?} else {
     @Inject(method = "extractRenderState", at = @At("RETURN"))
+    //?}
     private static void emotes$capturePreview(LivingEntity entity, CallbackInfoReturnable<EntityRenderState> cir) {
         EmotePreview.capture(entity.getId(), cir.getReturnValue());
     }

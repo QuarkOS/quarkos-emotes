@@ -11,6 +11,7 @@
   "license": "MIT",
   "icon": "assets/quarkos_emotes/icon.png",
   "environment": "*",
+  "accessWidener": "${accessWidener}",
   "mixins": [
     "quarkos_emotes.mixins.json"
   ],
@@ -28,7 +29,7 @@
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "${minecraft}",
-    "java": ">=21",
+    "java": "${java}",
     "fabric-api": "*"
   },
   "suggests": {

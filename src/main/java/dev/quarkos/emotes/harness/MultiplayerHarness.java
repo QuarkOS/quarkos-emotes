@@ -281,7 +281,12 @@ public final class MultiplayerHarness {
     private static void shot(String name) throws Exception { if(lifeShot==null) lifeShot=ClientHarness.screenshot(name); }
     private static void viewerLife(Minecraft mc) throws Exception {
         resolveActor(mc);
-        mc.player.setYRot(180);mc.player.setXRot(8);mc.options.hideGui=true;
+        mc.player.setYRot(180);mc.player.setXRot(8);
+        //? if >=26.3 {
+        /*ClientHarness.setHudHidden(mc, true);
+        *///?} else {
+        mc.options.hideGui=true;
+        //?}
         var entity=actor==null?null:mc.level.getPlayerByUUID(actor);
         var playback=actor==null?null:EmotesClient.player(actor);
         boolean dancing=playback!=null&&!playback.stopping()&&playback.emote().id().equals(DANCE);

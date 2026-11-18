@@ -13,7 +13,11 @@ import dev.quarkos.emotes.config.ui.Ui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+//? if >=26.3 {
+/*import com.mojang.blaze3d.platform.InputConstants;
+*///?} else {
 import org.lwjgl.glfw.GLFW;
+//?}
 
 import java.util.ArrayList;
 import java.util.List;
@@ -175,7 +179,11 @@ public final class EmoteConfigScreen extends Screen {
 
     @Override public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {}
 
+    //? if >=26.1 {
+    /*@Override public void extractRenderState(GuiGraphics g, int mouseX, int mouseY, float partial) {
+    *///?} else {
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
+    //?}
         g.fill(0, 0, width, height, minecraft.level == null ? Ui.GROUND : Ui.SCRIM);
         Ui.layer(g);
         Box head = geometry.header();
@@ -192,7 +200,11 @@ public final class EmoteConfigScreen extends Screen {
         for (Segmented segment : segments) segment.render(g);
         Ui.label(g, font, Component.literal(volume.percent()), volumeValue, Ui.MUTED);
         renderPreview(g, partial);
+        //? if >=26.1 {
+        /*super.extractRenderState(g, mouseX, mouseY, partial);
+        *///?} else {
         super.render(g, mouseX, mouseY, partial);
+        //?}
         if (harnessHoverSound) {
             Box sound = geometry.row(geometry.sound(), 0);
             drawHelp(g, sound.x(), sound.y());

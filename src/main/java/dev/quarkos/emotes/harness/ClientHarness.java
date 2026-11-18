@@ -138,10 +138,23 @@ public final class ClientHarness {
                     if(mc.level!=null&&mc.player!=null&&mc.screen==null) {
                         if(++wait<60) return;
                         shots=buildShots(); stage=Stage.SHOTS; ticks=0; wait=0;
-                        mc.options.hideGui=true; mc.options.bobView().set(false); mc.options.fov().set(54);
+                        //? if >=26.3 {
+                        /*setHudHidden(mc, true);
+                        *///?} else {
+                        mc.options.hideGui=true;
+                        //?}
+                        mc.options.bobView().set(false);
+                        mc.options.fov().set(54);
                         mc.options.pauseOnLostFocus=false;
                         var server=mc.getSingleplayerServer();
+                        //? if >=26.3 {
+                        /*if (server != null) server.execute(() -> {
+                            ServerHarness.setNoon(server);
+                            server.setWeatherParameters(0, 600000, false, false);
+                        });
+                        *///?} else {
                         if(server!=null) server.execute(()->{server.overworld().setDayTime(6000);server.overworld().setWeatherParameters(0,600000,false,false);});
+                        //?}
                     }
                 }
                 case SHOTS -> shoot(mc);
@@ -295,7 +308,11 @@ public final class ClientHarness {
                         p.emote().loop()==Emote.Loop.HOLD?p.emote().length()+1:poseTime(p.emote()));
             }
             boolean menu = shot.ui().startsWith("ui-") || matrix;
+            //? if >=26.3 {
+            /*setHudHidden(mc, !menu && !(shot.ui().equals("fp-wave") || shot.ui().equals("fp-sleep")));
+            *///?} else {
             mc.options.hideGui = !menu && !(shot.ui().equals("fp-wave") || shot.ui().equals("fp-sleep"));
+            //?}
             if (ui != null) seedUiFixture();
             if (shot.ui().startsWith("ui-wheel") || matrix) {
                 var wheel = new EmoteWheelScreen(EmoteConfig.MenuView.WHEEL);
@@ -427,7 +444,9 @@ public final class ClientHarness {
         EditBox search = (EditBox) screen.children().stream().filter(EditBox.class::isInstance).findFirst().orElseThrow();
         screen.setFocused(search);
         for (char letter : "da".toCharArray()) {
-            //? if >=1.21.11 {
+            //? if >=26.1 {
+            /*screen.charTyped(new net.minecraft.client.input.CharacterEvent(letter));
+            *///?} elif >=1.21.11 {
             screen.charTyped(new net.minecraft.client.input.CharacterEvent(letter, 0));
             //?} else {
             /*screen.charTyped(letter, 0);
@@ -448,12 +467,17 @@ public final class ClientHarness {
         wantWidth=width;wantHeight=height;
         mc.options.guiScale().set(guiScale);
         mc.getWindow().setWindowed(width,height);
+        //? if >=26.3 {
+        /*// The renderer resizes its target after the SDL framebuffer event.
+        org.lwjgl.sdl.SDLVideo.SDL_SyncWindow(mc.getWindow().handle());
+        *///?} else {
         // The framebuffer callback can lag a GLFW poll, and resizeDisplay then
         // rebuilds the color target at the previous size. Pin both dimensions
         // so the wheel is laid out for the requested window.
         org.lwjgl.glfw.GLFW.glfwPollEvents();
         mc.getWindow().setWidth(width);
         mc.getWindow().setHeight(height);
+        //?}
         mc.resizeDisplay();
         var target=mc.getMainRenderTarget();
         LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_UI resize={}x{} requestedScale={} logical={}x{} effective={} target={}x{}",
@@ -463,16 +487,29 @@ public final class ClientHarness {
         var window = mc.getWindow();
         double x = logicalX * window.getScreenWidth() / window.getGuiScaledWidth();
         double y = logicalY * window.getScreenHeight() / window.getGuiScaledHeight();
-        //? if >=1.21.11 {
+        //? if >=26.3 {
+        /*org.lwjgl.sdl.SDLMouse.SDL_WarpMouseInWindow(window.handle(), (float) x, (float) y);
+        *///?} elif >=1.21.11 {
         long handle=window.handle();
+        org.lwjgl.glfw.GLFW.glfwSetCursorPos(handle,x,y);
         //?} else {
         /*long handle=window.getWindow();
-        *///?}
         org.lwjgl.glfw.GLFW.glfwSetCursorPos(handle,x,y);
+        *///?}
     }
+    //? if >=26.3 {
+    /*static void setHudHidden(Minecraft mc, boolean hidden) {
+        if (mc.gui.hud.isHidden() != hidden) mc.gui.hud.toggle();
+    }
+    *///?}
     /** At GameRenderer TAIL: includes deferred GUI and the fully rendered world. */
     /** Hide HUD, chat and toasts for a store or lifecycle frame. */
     public static void quiet(Minecraft mc) {
+        //? if >=26.3 {
+        /*setHudHidden(mc, true);
+        mc.gui.hud.getChat().clearMessages(false);
+        mc.gui.toastManager().clear();
+        *///?} else {
         mc.options.hideGui=true;
         if(mc.gui!=null) mc.gui.getChat().clearMessages(false);
         //? if >=1.21.11 {
@@ -480,6 +517,7 @@ public final class ClientHarness {
         //?} else {
         /*mc.getToasts().clear();
         *///?}
+        //?}
     }
     public static void capture() {
         if(pending==null) return;Path path=pending;pending=null;Minecraft mc=Minecraft.getInstance();
