@@ -44,7 +44,7 @@ class LayoutTest {
                 }
             }
         }
-        assertTrue(WheelLayout.of(WheelLayout.logicalWidth(1280, 720, 0), WheelLayout.logicalHeight(1280, 720, 0)).radius() >= 80);
+        assertTrue(WheelLayout.of(WheelLayout.logicalWidth(1280, 720, 0), WheelLayout.logicalHeight(1280, 720, 0)).radius() >= 72); // 1280x720 auto scale (427x240 logical): hint now sits above the hotbar
         assertTrue(WheelLayout.of(1280, 720).radius() > 240);
         assertEquals(2, WheelLayout.effectiveScale(854, 480, 4));
         assertEquals(4, WheelLayout.effectiveScale(1920, 1080, 4));
