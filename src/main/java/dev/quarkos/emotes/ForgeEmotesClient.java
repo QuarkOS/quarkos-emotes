@@ -28,7 +28,11 @@ public final class ForgeEmotesClient {
             ForgeNetwork.CHANNEL.send(new ForgeNetwork.Request(id),PacketDistributor.SERVER.noArg()); return true;
         });
     }
-    private static void keys(RegisterKeyMappingsEvent event) { event.register(EmotesClient.OPEN); for(var key:EmotesClient.FAVORITES) event.register(key); }
+    private static void keys(RegisterKeyMappingsEvent event) {
+        event.register(EmotesClient.OPEN);
+        for(var key:EmotesClient.FAVORITES) event.register(key);
+        for(var key:EmotesClient.QUICK_SLOTS) event.register(key);
+    }
     private static void reload(RegisterClientReloadListenersEvent event) { event.registerReloadListener(new EmoteResources()); }
 }
 //?}

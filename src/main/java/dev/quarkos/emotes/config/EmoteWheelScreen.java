@@ -1,193 +1,344 @@
 package dev.quarkos.emotes.config;
 
-import dev.quarkos.emotes.*;
+import dev.quarkos.emotes.EmoteResources;
+import dev.quarkos.emotes.EmotesClient;
 import dev.quarkos.emotes.animation.Emote;
-import net.minecraft.client.gui.*;
-import net.minecraft.client.gui.components.*;
+import dev.quarkos.emotes.animation.EmoteFiles;
+import dev.quarkos.emotes.config.ConfigLayout.Box;
+import dev.quarkos.emotes.config.EmoteConfig.MenuView;
+import dev.quarkos.emotes.config.ui.FlatButton;
+import dev.quarkos.emotes.config.ui.Segmented;
+import dev.quarkos.emotes.config.ui.Ui;
+import dev.quarkos.emotes.config.ui.WheelRing;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
 import net.minecraft.client.resources.language.I18n;
-import net.minecraft.resources.Identifier;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.item.ItemStack;
-import java.util.*;
+import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.List;
+
 public final class EmoteWheelScreen extends Screen {
-    private EditBox search;
-    private int page,hover=-1,cx,cy,radius;
-    private WheelLayout layout=WheelLayout.of(320,240);
-    private boolean favorites;
-    private int category;
-    private static final List<String> CATEGORIES=List.of("all","greeting","reaction","dance","pose","fun");
-    public int harnessHover=-1;
-    public EmoteWheelScreen() { super(Component.translatable("screen.quarkos_emotes.wheel")); }
-    private void applyLayout() {
-        layout=WheelLayout.of(width,height); cx=layout.cx(); cy=layout.cy(); radius=layout.radius();
+    private MenuView view;
+    private boolean openingKeyDown;
+    private boolean releaseToPlay;
+    private List<Emote> registry = List.of();
+    private List<Emote> ordered = List.of();
+
+    private Box titleBox;
+    private Segmented views;
+    private WheelLayout wheel;
+    private WheelRing ring;
+    private Segmented wheelScope;
+    private FlatButton previousPage, nextPage;
+    private List<Emote> wheelItems = List.of();
+    private int page, pageDirection;
+    private double scrollRemainder;
+    private long pageChanged;
+
+    private EmoteLibrary library;
+
+    /** Fixed highlight for captures where the window cannot warp the cursor. */
+    public int harnessHover = -1;
+
+    public EmoteWheelScreen() {
+        this(false);
     }
+
+    public EmoteWheelScreen(boolean openingKeyDown) {
+        this(EmoteConfig.get().menuView);
+        this.openingKeyDown = openingKeyDown;
+        this.releaseToPlay = openingKeyDown && view == MenuView.WHEEL;
+    }
+
+    public EmoteWheelScreen(MenuView initialView) {
+        super(Component.translatable("screen.quarkos_emotes.wheel"));
+        this.view = initialView;
+    }
+
     @Override protected void init() {
-        applyLayout();
-        String query=search==null?"":search.getValue();
-        search=new EditBox(font,layout.searchX(),layout.searchY(),layout.searchW(),layout.searchH(),Component.translatable("text.quarkos_emotes.search"));
-        search.setHint(Component.translatable("text.quarkos_emotes.search")); search.setMaxLength(80); search.setValue(query);
-        search.setResponder(s->page=0); addRenderableWidget(search);
-        addRenderableWidget(Button.builder(categoryText(),b->{category=(category+1)%CATEGORIES.size();page=0;b.setMessage(categoryText());})
-                .bounds(layout.categoryX(),layout.searchY(),layout.categoryW(),layout.controlH()).build());
-        addRenderableWidget(Button.builder(Component.literal("‹"),b->page(-1)).bounds(layout.prevX(),layout.bottomY(),layout.controlH(),layout.controlH()).build());
-        addRenderableWidget(Button.builder(favoritesText(),b->{favorites=!favorites;page=0;b.setMessage(favoritesText());})
-                .bounds(layout.favX(),layout.bottomY(),layout.favW(),layout.controlH()).build());
-        addRenderableWidget(Button.builder(Component.literal("›"),b->page(1)).bounds(layout.nextX(),layout.bottomY(),layout.controlH(),layout.controlH()).build());
-        addRenderableWidget(Button.builder(Component.translatable("text.quarkos_emotes.settings"),b->minecraft.setScreen(new EmoteConfigScreen(this)))
-                .bounds(layout.settingsX(),4,layout.settingsW(),layout.controlH()).build());
+        Box header = WheelLayout.header(width, height);
+        int modeWidth = header.w() < 400 ? 93 : 116;
+        Box mode = new Box(width / 2 - modeWidth / 2, header.y(), modeWidth, header.h());
+        titleBox = new Box(header.x(), header.y(), mode.x() - header.x() - 8, header.h());
+        views = new Segmented(font, mode, List.of(Ui.text("wheel"), Ui.text("grid")), view::ordinal,
+                this::changeView, this::addRenderableWidget);
+        addRenderableWidget(new FlatButton(font, new Box(header.right() - 74, header.y(), 74, header.h()), Ui.text("settings"),
+                () -> minecraft.setScreen(new EmoteConfigScreen(this))));
+
+        if (view == MenuView.WHEEL) {
+            wheel = WheelLayout.of(width, height);
+            ring = new WheelRing(wheel);
+            wheelScope = new Segmented(font, wheel.scope(), List.of(Ui.text("favorites"), Ui.text("all")),
+                    () -> EmoteConfig.get().wheelFavoritesOnly ? 0 : 1, this::changeScope, this::addRenderableWidget);
+            Box pager = wheel.pager();
+            previousPage = addRenderableWidget(pageArrow(new Box(pager.x(), pager.y(), 20, pager.h()), -1));
+            nextPage = addRenderableWidget(pageArrow(new Box(pager.right() - 20, pager.y(), 20, pager.h()), 1));
+        } else {
+            if (library == null) library = new EmoteLibrary(font, minecraft, this::play, this::setFocused);
+            library.init(GridLayout.of(width, height), this::addRenderableWidget);
+        }
+        refreshCatalog(EmoteResources.REGISTRY.all());
         clearFocus();
     }
-    // Start with wheel shortcuts available; clicking or tabbing to search enables typing.
-    @Override protected void setInitialFocus() {}
-    private Component favoritesText() {
-        return favorites?Component.translatable("text.quarkos_emotes.all_emotes"):
-                Component.translatable("text.quarkos_emotes.favorites").append(" ("+EmoteConfig.get().favorites.size()+")");
-    }
-    private Component categoryText() {return Component.translatable("category.quarkos_emotes."+CATEGORIES.get(category));}
 
-    private List<Emote> filtered() {
-        String q=search==null?"":search.getValue().toLowerCase(Locale.ROOT);
-        var order=List.of("wave","thinking","clap","tableflip","facepalm","groove","bigdance","cheer",
-                "yes","no","cry","rage","victory","heart_hands","wave_big","slow_clap",
-                "bow","salute","laugh","shrug","point","dab","sit","sit_full",
-                "backflip","spin","worm","floss","zombie_walk","sleep","tpose","stretch",
-                "jump_hype","fishing_cast","sword_salute","guitar","drums","default_dance","kneel","lay_down","pushups","meditate");
-        var list=EmoteResources.REGISTRY.all().stream().sorted(Comparator.<Emote>comparingInt(e->{int i=order.indexOf(e.id().replace("quarkos_emotes:",""));return i<0?Integer.MAX_VALUE:i;}).thenComparing(Emote::id)).toList();
-        if(favorites) list=EmoteConfig.get().favorites.stream().map(EmoteResources.REGISTRY::get).filter(Objects::nonNull).toList();
-        return list.stream().filter(e->category==0||e.category().equals(CATEGORIES.get(category)))
-                .filter(e->e.id().contains(q)||label(e).getString().toLowerCase(Locale.ROOT).contains(q)).toList();
+    @Override protected void setInitialFocus() {}
+
+    private FlatButton pageArrow(Box box, int step) {
+        return new FlatButton(font, box, Ui.text(step < 0 ? "previous_page" : "next_page"), () -> changePage(step)) {
+            @Override protected void paint(GuiGraphics g) {
+                Ui.panel(g, box, isHovered && active ? Ui.RAISED : Ui.CONTROL, edge());
+                Ui.center(g, font, Component.literal(step < 0 ? "‹" : "›"), box, active ? Ui.TEXT : Ui.MUTED);
+            }
+        };
     }
-    private List<Emote> slots() {
-        var list=filtered(); page=Math.clamp(page,0,Math.max(0,(list.size()-1)/8));
-        return list.subList(Math.min(list.size(),page*8),Math.min(list.size(),page*8+8));
+
+    private void changeView(int index) {
+        MenuView next = MenuView.values()[index];
+        if (next == view) return;
+        releaseToPlay = false;
+        view = next;
+        EmoteConfig.get().menuView = next;
+        EmoteConfig.save();
+        rebuildWidgets();
     }
-    private void page(int delta) { int pages=Math.max(1,(filtered().size()+7)/8); page=Math.floorMod(page+delta,pages); }
-    public static Component label(Emote e) {
-        if(I18n.exists(e.name())) return Component.translatable(e.name());
-        // Unknown resource-pack translation keys still get a readable display name.
-        String name=e.name();
-        if(name.startsWith("emote.")||name.startsWith("quarkos_emotes.")||name.contains(":")) name=dev.quarkos.emotes.animation.EmoteFiles.title(e.id().substring(e.id().indexOf(':')+1));
+
+    private void changeScope(int index) {
+        boolean favoritesOnly = index == 0;
+        if (EmoteConfig.get().wheelFavoritesOnly == favoritesOnly) return;
+        EmoteConfig.get().wheelFavoritesOnly = favoritesOnly;
+        EmoteConfig.save();
+        page = 0;
+        refreshWheel();
+    }
+
+    private void refreshCatalog(List<Emote> definitions) {
+        registry = definitions;
+        ordered = EmoteCatalog.ordered(definitions);
+        if (view == MenuView.WHEEL) refreshWheel();
+        else library.setCatalog(ordered);
+    }
+
+    private void refreshWheel() {
+        var config = EmoteConfig.get();
+        wheelItems = EmoteCatalog.wheel(ordered, config.favorites, config.wheelFavoritesOnly);
+        page = WheelLayout.clampPage(page, wheelItems.size());
+        previousPage.active = nextPage.active = WheelLayout.pageCount(wheelItems.size()) > 1;
+    }
+
+    private void changePage(int step) {
+        int next = WheelLayout.wrapPage(page, step, wheelItems.size());
+        if (next == page) return;
+        page = next;
+        pageDirection = Integer.signum(step);
+        pageChanged = System.nanoTime();
+    }
+
+    private Emote atSlot(int slot) {
+        int index = WheelLayout.slotIndex(page, slot, wheelItems.size());
+        return index < 0 ? null : wheelItems.get(index);
+    }
+
+    private void play(Emote emote) {
+        if (emote == null || minecraft.player == null || EmoteResources.REGISTRY.get(emote.id()) == null) return;
+        minecraft.setScreen(null);
+        EmotesClient.play(emote.id());
+    }
+
+    public static Component label(Emote emote) {
+        if (I18n.exists(emote.name())) return Component.translatable(emote.name());
+        String name = emote.name();
+        if (name.startsWith("emote.") || name.startsWith("quarkos_emotes.") || name.contains(":")) {
+            name = EmoteFiles.title(emote.id().substring(emote.id().indexOf(':') + 1));
+        }
         return Component.literal(name);
     }
-    private int sector(double x,double y) {
-        double dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy);
-        if(d<radius*.38||d>radius) return -1;
-        return Math.floorMod((int)Math.floor((Math.atan2(dy,dx)+Math.PI/2+Math.PI/8)/(Math.PI/4)),8);
+
+    @Override public void tick() {
+        List<Emote> definitions = EmoteResources.REGISTRY.all();
+        if (!definitions.equals(registry)) refreshCatalog(definitions);
+        if (view == MenuView.GRID) library.tick();
     }
-    @Override public void render(GuiGraphics g,int mx,int my,float partial) {
-        applyLayout();
-        g.fill(0,0,width,height,0xda151920);
-        g.fill(0,layout.bottomY()-4,width,height,0xee101318);
-        var slots=slots(); hover=harnessHover>=0?harnessHover:sector(mx,my);
-        // Horizontal runs form a smooth annulus with eight independently highlighted sectors.
-        for(int y=cy-radius;y<=cy+radius;y++) {
-            int run=-1,last=-1;
-            for(int x=cx-radius;x<=cx+radius+1;x++) {
-                int s=x<=cx+radius?sector(x+.5,y+.5):-1;
-                double angle=Math.atan2(y+.5-cy,x+.5-cx)+Math.PI/2+Math.PI/8;
-                // A slim gap separates targets without reducing their clickable area.
-                if(Math.abs(Math.sin(angle*4))<.055) s=-1;
-                if(s!=last) {
-                    if(last>=0) {
-                        int color=last>=slots.size()?0xff242830:last==hover?0xff476a83:last%2==0?0xff343e4b:0xff303946;
-                        g.fill(run,y,x,y+1,color);
-                    }
-                    run=x;last=s;
-                }
-            }
+
+    // The screen draws its own scrim in render on both versions.
+    @Override public void renderBackground(GuiGraphics g, int x, int y, float partial) {}
+
+    @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
+        g.fill(0, 0, width, height, minecraft.level == null ? Ui.GROUND : Ui.SCRIM);
+        Ui.layer(g);
+        float titleScale = titleBox.w() >= 145 ? 1.45f : 1.18f;
+        Ui.heading(g, font, title, titleBox, titleScale, false);
+        views.render(g);
+        if (view == MenuView.WHEEL) renderWheel(g, mouseX, mouseY);
+        else library.renderPanels(g, mouseX, mouseY, partial);
+        super.render(g, mouseX, mouseY, partial);
+        if (view == MenuView.GRID) library.renderTooltip(g, mouseX, mouseY);
+    }
+
+    private void renderWheel(GuiGraphics g, int mouseX, int mouseY) {
+        int hover = harnessHover >= 0 ? harnessHover : wheel.slotAt(mouseX, mouseY);
+        Emote hovered = atSlot(hover);
+        float phase = 1 - Math.clamp((System.nanoTime() - pageChanged) / 140_000_000f, 0f, 1f);
+        float slide = pageDirection * phase * phase * Math.min(9, wheel.radius() * .055f);
+        ring.render(g, font, wheelItems, page, hover, slide, EmoteConfig.get().favorites::contains);
+        int span = (int) (wheel.innerRadius() * 1.8);
+        int cx = wheel.cx(), cy = wheel.cy();
+        Component name = hovered != null ? label(hovered) : wheelItems.isEmpty() ? Ui.text("nothing_on_wheel") : Ui.text("pick_emote");
+        boolean hold = releaseToPlay && EmoteConfig.get().holdWheel;
+        Component help = hovered != null ? Ui.text(hold ? "release_to_play" : "click_to_play")
+                : wheelItems.isEmpty() && EmoteConfig.get().wheelFavoritesOnly ? Ui.text("switch_to_all") : Ui.text("number_keys");
+        if (hovered != null) {
+            EmotesClient.selected = hovered.id();
+            if (hold && font.width(help) > span) help = Ui.text("release");
         }
-        int inner=(int)(radius*.36);
-        for(int dy=-inner;dy<=inner;dy++) {
-            int half=(int)Math.sqrt(inner*inner-dy*dy);
-            g.fill(cx-half,cy+dy,cx+half+1,cy+dy+1,0xff1c222b);
+        float nameScale = Math.clamp(wheel.radius() / 77f, 1f, 2.3f);
+        Ui.heading(g, font, name, new Box(cx - span / 2, cy - 20, span, 20), nameScale, true);
+        if (!wheelItems.isEmpty() || EmoteConfig.get().wheelFavoritesOnly) {
+            Ui.center(g, font, help, new Box(cx - span / 2, cy + 3, span, 12), Ui.MUTED);
         }
-        float iconScale=layout.contentScale();
-        for(int i=0;i<slots.size();i++) {
-            double angle=-Math.PI/2+i*Math.PI/4;
-            int x=cx+(int)(Math.cos(angle)*radius*.70), y=cy+(int)(Math.sin(angle)*radius*.70);
-            var e=slots.get(i); Identifier id=Identifier.tryParse(e.icon());
-            var pose=g.pose();
-            //? if >=1.21.11 {
-            pose.pushMatrix();
-            pose.translate(x,y);
-            pose.scale(iconScale,iconScale);
-            //?} else {
-            /*pose.pushPose();
-            pose.translate(x,y,0);
-            pose.scale(iconScale,iconScale,1);
-            *///?}
-            if(id!=null) {
-                //? if >=1.21.11 {
-                var item=BuiltInRegistries.ITEM.getValue(id);
-                //?} else {
-                /*var item=BuiltInRegistries.ITEM.get(id);
-                *///?}
-                if(item!=null) g.renderItem(new ItemStack(item),-8,-10);
-            }
-            boolean starred=EmoteConfig.get().favorites.contains(e.id());
-            g.drawCenteredString(font,Component.literal((i+1)+(starred?" ★":"")),0,8,0xffeff5ff);
-            //? if >=1.21.11 {
-            pose.popMatrix();
-            //?} else {
-            /*pose.popPose();
-            *///?}
+
+        wheelScope.render(g);
+        renderDots(g);
+        Ui.center(g, font, Ui.text("wheel_help"), new Box(8, wheel.helpY(), width - 16, 10), Ui.MUTED);
+    }
+
+    private void renderDots(GuiGraphics g) {
+        Box pager = wheel.pager();
+        int count = WheelLayout.pageCount(wheelItems.size());
+        if (count > 8) {
+            Ui.center(g, font, Ui.text("page_number", page + 1, count),
+                    new Box(pager.x() + 22, pager.y(), pager.w() - 44, pager.h()), Ui.MUTED);
+            return;
         }
-        if(layout.compact()) g.drawString(font,Component.literal("Emotes"),8,layout.searchY()+3,0xffeff5ff,false);
-        else g.drawString(font,title,10,11,0xffeff5ff,false);
-        g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.page"),cx,cy-13,0xffaab8c8);
-        g.drawCenteredString(font,Component.literal((page+1)+" / "+Math.max(1,(filtered().size()+7)/8)),cx,cy+2,0xffeff5ff);
-        int nameY=cy+radius+4;
-        if(hover>=0&&hover<slots.size()) {
-            Emote e=slots.get(hover); g.drawCenteredString(font,Component.literal(font.plainSubstrByWidth(label(e).getString(),width-16)),cx,nameY,0xffffffff);
-            EmotesClient.selected=e.id();
-        } else if(slots.isEmpty()) g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.empty"),cx,nameY,0xffced5df);
-        else g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.choose"),cx,nameY,0xffcbd5e1);
-        if(!layout.compact()) g.drawCenteredString(font,Component.translatable("text.quarkos_emotes.wheel_help"),cx,layout.bottomY()-12,0xffc9d3df);
-        super.render(g,mx,my,partial);
+        int start = pager.x() + pager.w() / 2 - (count * 10 - 4) / 2;
+        for (int i = 0; i < count; i++) {
+            Ui.softRect(g, new Box(start + i * 10, pager.y() + 7, 6, 5), i == page ? Ui.ACCENT : Ui.HOVER);
+        }
     }
-    private void select(int slot) { var list=slots(); if(slot>=0&&slot<list.size()) { minecraft.setScreen(null);EmotesClient.play(list.get(slot).id()); } else onClose(); }
-    private void favorite() {
-        var list=slots();
-        if(hover>=0&&hover<list.size()) { EmoteConfig.get().favorite(list.get(hover).id()); rebuildWidgets(); }
+
+    private boolean click(double x, double y, int button) {
+        if (view == MenuView.GRID) {
+            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) return library.clickOutsideWidgets(x, y);
+            return false;
+        }
+        Emote emote = atSlot(wheel.slotAt(x, y));
+        if (emote == null) return false;
+        if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            EmoteConfig.get().favorite(emote.id());
+            refreshWheel();
+        } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) play(emote);
+        else return false;
+        return true;
     }
-    private boolean click(double x,double y,int button) {
-        int s=sector(x,y); if(s<0) { search.setFocused(false);setFocused(null);return false; }
-        hover=s; if(button==1) favorite();else if(button==0) select(s); return true;
+
+    private boolean openPressed() {
+        if (view == MenuView.GRID && library.searchFocused()) return false;
+        if (view == MenuView.WHEEL && EmoteConfig.get().holdWheel) return false;
+        if (!openingKeyDown) onClose();
+        return true;
     }
-    private boolean key(int key) {
-        if(search.isFocused()) return false;
-        if(key>=GLFW.GLFW_KEY_1&&key<=GLFW.GLFW_KEY_8) { select(key-GLFW.GLFW_KEY_1);return true; }
-        if(key==GLFW.GLFW_KEY_F) { favorite(); return true; }
-        if(key==GLFW.GLFW_KEY_RIGHT||key==GLFW.GLFW_KEY_PAGE_DOWN) { page(1);return true; }
-        if(key==GLFW.GLFW_KEY_LEFT||key==GLFW.GLFW_KEY_PAGE_UP) { page(-1);return true; }
+
+    private boolean openReleased(double x, double y) {
+        openingKeyDown = false;
+        if (!releaseToPlay) return false;
+        releaseToPlay = false;
+        if (view != MenuView.WHEEL || !EmoteConfig.get().holdWheel) return false;
+        Emote emote = atSlot(wheel.slotAt(x, y));
+        if (emote == null) onClose();
+        else play(emote);
+        return true;
+    }
+
+    private double pointerX() {
+        return minecraft.mouseHandler.xpos() * width / minecraft.getWindow().getScreenWidth();
+    }
+
+    private double pointerY() {
+        return minecraft.mouseHandler.ypos() * height / minecraft.getWindow().getScreenHeight();
+    }
+
+    private boolean wheelKey(int key) {
+        if (view != MenuView.WHEEL) return false;
+        if (key >= GLFW.GLFW_KEY_1 && key <= GLFW.GLFW_KEY_8) {
+            play(atSlot(key - GLFW.GLFW_KEY_1));
+            return true;
+        }
+        if (key == GLFW.GLFW_KEY_F) return click(pointerX(), pointerY(), GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+        if (key == GLFW.GLFW_KEY_RIGHT || key == GLFW.GLFW_KEY_PAGE_DOWN) {
+            changePage(1);
+            return true;
+        }
+        if (key == GLFW.GLFW_KEY_LEFT || key == GLFW.GLFW_KEY_PAGE_UP) {
+            changePage(-1);
+            return true;
+        }
         return false;
     }
+
+    @Override public boolean mouseScrolled(double x, double y, double horizontal, double vertical) {
+        if (view == MenuView.GRID) return super.mouseScrolled(x, y, horizontal, vertical);
+        if (vertical == 0) return false;
+        scrollRemainder -= vertical;
+        int step = (int) scrollRemainder;
+        if (step != 0) {
+            scrollRemainder -= step;
+            changePage(step);
+        }
+        return true;
+    }
+
     //? if >=1.21.11 {
-    @Override public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent e,boolean twice) {
-        return super.mouseClicked(e,twice)||click(e.x(),e.y(),e.button());
+    @Override public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent e, boolean twice) {
+        MenuView before = view;
+        if (super.mouseClicked(e, twice)) {
+            if (view != before) clearFocus();
+            return true;
+        }
+        return click(e.x(), e.y(), e.button()) || EmotesClient.OPEN.matchesMouse(e) && openPressed();
+    }
+    @Override public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent e, double dx, double dy) {
+        return view == MenuView.GRID && library.drag(dx) || super.mouseDragged(e, dx, dy);
+    }
+    @Override public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent e) {
+        return EmotesClient.OPEN.matchesMouse(e) && openReleased(e.x(), e.y()) ||
+                view == MenuView.GRID && e.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && library.endDrag() || super.mouseReleased(e);
     }
     @Override public boolean keyPressed(net.minecraft.client.input.KeyEvent e) {
-        if(!EmoteConfig.get().holdWheel&&EmotesClient.OPEN.matches(e)) { onClose();return true; }
-        return key(e.key())||super.keyPressed(e);
+        return EmotesClient.OPEN.matches(e) && openPressed() || wheelKey(e.key()) || super.keyPressed(e);
     }
     @Override public boolean keyReleased(net.minecraft.client.input.KeyEvent e) {
-        if(EmoteConfig.get().holdWheel&&EmotesClient.OPEN.matches(e)) { if(!search.isFocused())select(hover);return true; }
-        return super.keyReleased(e);
+        return EmotesClient.OPEN.matches(e) && openReleased(pointerX(), pointerY()) || super.keyReleased(e);
     }
     //?} else {
-    /*@Override public boolean mouseClicked(double x,double y,int button) { return super.mouseClicked(x,y,button)||click(x,y,button); }
-    @Override public boolean keyPressed(int key,int scan,int mods) {
-        if(!EmoteConfig.get().holdWheel&&EmotesClient.OPEN.matches(key,scan)) { onClose();return true; }
-        return key(key)||super.keyPressed(key,scan,mods);
+    /*@Override public boolean mouseClicked(double x, double y, int button) {
+        MenuView before = view;
+        if (super.mouseClicked(x, y, button)) {
+            if (view != before) clearFocus();
+            return true;
+        }
+        return click(x, y, button) || EmotesClient.OPEN.matchesMouse(button) && openPressed();
     }
-    @Override public boolean keyReleased(int key,int scan,int mods) {
-        if(EmoteConfig.get().holdWheel&&EmotesClient.OPEN.matches(key,scan)) { if(!search.isFocused())select(hover);return true; }
-        return super.keyReleased(key,scan,mods);
+    @Override public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
+        return view == MenuView.GRID && library.drag(dx) || super.mouseDragged(x, y, button, dx, dy);
+    }
+    @Override public boolean mouseReleased(double x, double y, int button) {
+        return EmotesClient.OPEN.matchesMouse(button) && openReleased(x, y) ||
+                view == MenuView.GRID && button == GLFW.GLFW_MOUSE_BUTTON_LEFT && library.endDrag() || super.mouseReleased(x, y, button);
+    }
+    @Override public boolean keyPressed(int key, int scan, int mods) {
+        return EmotesClient.OPEN.matches(key, scan) && openPressed() || wheelKey(key) || super.keyPressed(key, scan, mods);
+    }
+    @Override public boolean keyReleased(int key, int scan, int mods) {
+        return EmotesClient.OPEN.matches(key, scan) && openReleased(pointerX(), pointerY()) || super.keyReleased(key, scan, mods);
     }
     *///?}
-    @Override public boolean mouseScrolled(double x,double y,double sx,double sy) { page(sy>0?-1:1);return true; }
-    @Override public boolean isPauseScreen() { return false; }
+
+    @Override public void removed() {
+        releaseToPlay = openingKeyDown = false;
+        if (library != null) library.endDrag();
+    }
+
+    @Override public boolean isPauseScreen() {
+        return false;
+    }
 }

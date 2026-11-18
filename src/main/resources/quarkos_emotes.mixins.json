@@ -13,6 +13,8 @@
     "GuiCaptureMixin",
     "CameraZoomMixin",
     "PreviewOrbitMixin",
+    "PreviewInventoryMixin",
+    "PreviewGuiMixin",
     "EmoteHandsMixin",
     "HarnessSkinMixin"
   ],

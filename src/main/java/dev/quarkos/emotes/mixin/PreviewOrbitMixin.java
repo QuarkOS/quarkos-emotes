@@ -2,13 +2,13 @@ package dev.quarkos.emotes.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import dev.quarkos.emotes.EmotesClient;
+import dev.quarkos.emotes.config.ui.EmotePreview;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Turns the config-screen figure so a prone pose is not hidden behind its own head. */
+/** Applies the orbit of the inventory preview currently being rendered. */
 @Mixin(net.minecraft.client.renderer.entity.LivingEntityRenderer.class)
 public abstract class PreviewOrbitMixin {
     //? if >=1.21.11 {
@@ -23,6 +23,7 @@ public abstract class PreviewOrbitMixin {
     }
     *///?}
     private static void orbit(PoseStack pose) {
-        if(EmotesClient.previewOrbit!=0) pose.mulPose(Axis.YP.rotationDegrees(EmotesClient.previewOrbit));
+        float yaw = EmotePreview.orbit();
+        if (yaw != 0) pose.mulPose(Axis.YP.rotationDegrees(yaw));
     }
 }

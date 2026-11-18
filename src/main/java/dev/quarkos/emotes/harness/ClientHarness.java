@@ -8,6 +8,7 @@ import net.minecraft.client.*;
 import net.minecraft.client.gui.screens.*;
 import net.minecraft.client.gui.screens.worldselection.*;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -18,6 +19,16 @@ import org.slf4j.LoggerFactory;
 public final class ClientHarness {
     private enum Stage { TITLE, CREATE, WORLD, SHOTS, STOP }
     private record Shot(String name,String id,CameraType camera,String ui) {}
+    private record UiShot(String name, int width, int height, int scale) {}
+    private record UiFixture(List<String> favorites, List<String> slots, boolean favoritesOnly) {}
+    private static final List<UiShot> UI_SHOTS = List.of(
+            new UiShot("ui-wheel", 1920, 1080, 2),
+            new UiShot("ui-wheel-scale4", 1920, 1080, 4),
+            new UiShot("ui-grid", 1920, 1080, 2),
+            new UiShot("ui-grid-search", 1920, 1080, 2),
+            new UiShot("ui-settings", 1920, 1080, 2),
+            new UiShot("ui-grid-small", 960, 540, 2));
+    private static UiFixture uiFixture;
     private static Stage stage=Stage.TITLE;
     private static int ticks,index,wait,pass,fail;
     private static boolean queued,moved,summary,optionsReady,handMoved;
@@ -31,6 +42,7 @@ public final class ClientHarness {
     public static String model="steve";
     private static List<Shot> shots=List.of();
     private static Path pending;
+    private static volatile Path written;
     public static float portraitDistance=3.25f,portraitDrop=.62f,portraitOrbit,portraitForward,portraitPitch;
     private static final int GUI_SCALE=Math.max(0,Math.min(8,Integer.getInteger("quarkos_emotes.guiScale",0)));
     /** Authored key times in seconds: contact/gesture peaks, not a fraction of clip length. */
@@ -111,6 +123,7 @@ public final class ClientHarness {
                 mc.options.onboardAccessibility=false;mc.options.save();mc.setScreen(new TitleScreen());stage=Stage.TITLE;ticks=0;return;
             }
             if(stage!=Stage.STOP&&ticks>20*240) {
+                restoreUiFixture();
                 fail++;LoggerFactory.getLogger("quarkos_emotes").error("EMOTE_HARNESS timeout stage={}",stage);stage=Stage.STOP;wait=0;
             }
             switch(stage) {
@@ -133,7 +146,11 @@ public final class ClientHarness {
                     if(wait++>10)mc.stop();
                 }
             }
-        } catch(Exception e) { LoggerFactory.getLogger("quarkos_emotes").error("EMOTE_HARNESS failed",e);fail++;stage=Stage.STOP;wait=0; }
+        } catch(Exception e) {
+            restoreUiFixture();
+            LoggerFactory.getLogger("quarkos_emotes").error("EMOTE_HARNESS failed",e);
+            fail++;stage=Stage.STOP;wait=0;
+        }
     }
     private static void create(Minecraft mc) {
         if(mc.screen instanceof ConfirmScreen) { pressFirst(mc.screen);return; }
@@ -169,7 +186,7 @@ public final class ClientHarness {
         if(EmoteResources.REGISTRY.all().isEmpty()) {
             fail++;LoggerFactory.getLogger("quarkos_emotes").error("EMOTE_CHECK name=registry result=FAIL detail=no_emotes_loaded");
         }
-        Set<String> only=new HashSet<>(Arrays.asList(System.getProperty("quarkos_emotes.only","").split(",")));
+        Set<String> only=new HashSet<>(Arrays.asList(System.getProperty("quarkos_emotes.only","").split("\\s*,\\s*")));
         for(var e:EmoteResources.REGISTRY.all()) {
             String name=e.id().split(":",2)[1].replace('/','_');
             boolean all=only.contains("")||only.contains(name)||only.contains(e.id())||only.contains("emote-"+name);
@@ -194,7 +211,7 @@ public final class ClientHarness {
         }
         String wave=EmoteResources.REGISTRY.all().stream().filter(e->e.id().endsWith(":wave")).map(Emote::id).findFirst()
                 .orElse(EmoteResources.REGISTRY.all().isEmpty()?"":EmoteResources.REGISTRY.all().getFirst().id());
-        for(String ui:List.of("ui-wheel","ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","ui-config-meditate","ui-config-pushups","ui-config-lay_down","fp-wave","fp-wave-camera","fp-sleep","fp-sleep-camera")) if((!QUICK||ui.startsWith("ui-"))&&(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel"))||(ui.startsWith("ui-config-")&&only.contains("ui-config"))))
+        for(String ui:List.of("ui-wheel-hover","ui-wheel-s"+GUI_SCALE,"ui-config","ui-config-meditate","ui-config-pushups","ui-config-lay_down","fp-wave","fp-wave-camera","fp-sleep","fp-sleep-camera")) if((!QUICK||ui.startsWith("ui-"))&&(only.contains("")||only.contains(ui)||(ui.startsWith("ui-wheel-s")&&only.contains("ui-wheel"))||(ui.startsWith("ui-config-")&&only.contains("ui-config"))))
             list.add(new Shot(ui,ui.startsWith("fp-sleep")?"quarkos_emotes:sleep":ui.startsWith("ui-config-")?"quarkos_emotes:"+ui.substring("ui-config-".length()):wave,
                     ui.equals("fp-wave")||ui.equals("fp-sleep")?CameraType.FIRST_PERSON:CameraType.THIRD_PERSON_FRONT,ui));
         if(!QUICK) for(int[] res:new int[][]{{854,480},{1280,720},{1920,1080},{2560,1440}})
@@ -203,6 +220,11 @@ public final class ClientHarness {
                 if(only.contains("")||only.contains("ui-matrix")||only.contains(name))
                     list.add(new Shot(name,wave,CameraType.THIRD_PERSON_FRONT,"matrix:"+res[0]+":"+res[1]+":"+scale));
             }
+        for (UiShot ui : UI_SHOTS) {
+            if (only.contains("") || only.contains(ui.name())) {
+                list.add(new Shot(ui.name(), wave, CameraType.THIRD_PERSON_FRONT, ui.name()));
+            }
+        }
         if(list.isEmpty())throw new IllegalArgumentException("No screenshots match quarkos_emotes.only");
         return list;
     }
@@ -222,13 +244,21 @@ public final class ClientHarness {
         }
         var shot=shots.get(index);
         boolean matrix=shot.ui().startsWith("matrix:");
-        if(matrix&&wait==0) {
-            String[] parts=shot.ui().split(":");
-            resize(mc,Integer.parseInt(parts[1]),Integer.parseInt(parts[2]),Integer.parseInt(parts[3]));
-            wait++;return;
+        UiShot ui = UI_SHOTS.stream().filter(candidate -> candidate.name().equals(shot.name())).findFirst().orElse(null);
+        int setupTick = matrix || ui != null ? 12 : 0;
+        if (setupTick > 0 && wait == 0) {
+            mc.setScreen(null);
+            if (matrix) {
+                String[] parts = shot.ui().split(":");
+                resize(mc, Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+            } else {
+                resize(mc, ui.width(), ui.height(), ui.scale());
+            }
+            wait++;
+            return;
         }
-        // Give the framebuffer callback time to catch the new window before the wheel is laid out.
-        if(matrix&&wait<12) { wait++;return; }
+        // Wait for the framebuffer callback before laying out the screen.
+        if (wait < setupTick) { wait++; return; }
         anchor(mc);
         if(restoringCamera) {
             if(++restoreTicks<6)return;
@@ -236,8 +266,8 @@ public final class ClientHarness {
                     "camera_restored_after_0.2s_cancel_blend");
             restoringCamera=false;index++;wait=0;ticks=0;return;
         }
-        if(wait==(matrix?12:0)) {
-            if(matrix) resize(mc,wantWidth,wantHeight,mc.options.guiScale().get());
+        if (wait == setupTick) {
+            if (setupTick > 0) resize(mc, wantWidth, wantHeight, mc.options.guiScale().get());
             moved=false;handMoved=false;queued=false;bodyX=bodyY=0;renderedProps.clear();propPass=false;mc.setScreen(null);
             model=shot.name().endsWith("-alex")?"alex":"steve";
             boolean namedView=shot.ui().equals("side")||shot.ui().equals("34");
@@ -260,22 +290,47 @@ public final class ClientHarness {
                 } else p.freeze(shot.ui().equals("hidden")?.249:shot.ui().equals("90")?.63:
                         p.emote().loop()==Emote.Loop.HOLD?p.emote().length()+1:poseTime(p.emote()));
             }
-            // F1 also hides the first-person hands. Keep the normal HUD for that evidence shot.
-            mc.options.hideGui=!(shot.ui().equals("fp-wave")||shot.ui().equals("fp-sleep"));
-            if(shot.ui().startsWith("ui-wheel")||matrix) {
-                var wheel=new EmoteWheelScreen();mc.setScreen(wheel);if(shot.ui().endsWith("hover"))wheel.harnessHover=0;
-                if(!shot.ui().endsWith("hover")) cursor(mc,2,2);
-            }
-            if(shot.ui().equals("ui-config")||shot.ui().startsWith("ui-config-")) {
-                if(shot.ui().startsWith("ui-config-")) EmotesClient.selected=shot.id();
-                mc.setScreen(new EmoteConfigScreen(null));
-                // init() starts the preview; freeze that new instance as well.
-                p=EmotesClient.player(mc.player.getUUID());if(p!=null)p.freeze(poseTime(p.emote()));
-                var geo=ConfigLayout.geometry(mc.getWindow().getGuiScaledWidth(),mc.getWindow().getGuiScaledHeight());
-                cursor(mc,geo.left()+geo.optionWidth()/2.0,geo.top()+10);
+            boolean menu = shot.ui().startsWith("ui-") || matrix;
+            mc.options.hideGui = !menu && !(shot.ui().equals("fp-wave") || shot.ui().equals("fp-sleep"));
+            if (ui != null) seedUiFixture();
+            if (shot.ui().startsWith("ui-wheel") || matrix) {
+                var wheel = new EmoteWheelScreen(EmoteConfig.MenuView.WHEEL);
+                mc.setScreen(wheel);
+                if (ui != null || shot.ui().endsWith("hover")) {
+                    wheel.harnessHover = 0;
+                    var layout = WheelLayout.of(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+                    cursor(mc, layout.cx(), layout.cy() - (layout.innerRadius() + layout.radius()) / 2.0);
+                } else {
+                    cursor(mc, 2, 2);
+                }
+            } else if (shot.ui().startsWith("ui-grid")) {
+                EmotesClient.selected = shot.id();
+                var grid = new EmoteWheelScreen(EmoteConfig.MenuView.GRID);
+                mc.setScreen(grid);
+                var layout = GridLayout.of(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+                if (shot.ui().equals("ui-grid-search")) {
+                    typeSearch(grid);
+                    cursor(mc, 2, 2);
+                } else {
+                    var card = layout.cards().card(1, 0);
+                    cursor(mc, card.x() + card.w() / 2.0, card.y() + card.h() / 2.0);
+                }
+            } else if (shot.ui().startsWith("ui-config") || shot.ui().equals("ui-settings")) {
+                EmotesClient.selected = shot.id();
+                var settings = new EmoteConfigScreen(null);
+                mc.setScreen(settings);
+                if (ui == null) {
+                    var emote = EmoteResources.REGISTRY.get(shot.id());
+                    if (emote != null) settings.freezePreview(poseTime(emote));
+                    var geo = ConfigLayout.geometry(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+                    var row = geo.row(geo.playback(), 0);
+                    cursor(mc, row.x() + row.w() / 2.0, row.y() + row.h() / 2.0);
+                } else {
+                    cursor(mc, 2, 2);
+                }
             }
             LoggerFactory.getLogger("quarkos_emotes").info("EMOTE_SHOT name={} time={} camera={} distance={} orbit={} guiScale={} effectiveScale={}",
-                    shot.name(),p==null?0:p.time(0),mc.options.getCameraType(),portraitDistance,portraitOrbit,GUI_SCALE,mc.getWindow().getGuiScale());
+                    shot.name(),p==null?0:p.time(0),mc.options.getCameraType(),portraitDistance,portraitOrbit,mc.options.guiScale().get(),mc.getWindow().getGuiScale());
         }
         var chainPlayer=EmotesClient.player(mc.player.getUUID());
         if(chainFrom!=null&&!chainSwitched&&chainPlayer!=null&&!chainPlayer.segment(0).name().equals(chainFrom)) {
@@ -284,10 +339,23 @@ public final class ClientHarness {
             chainPlayer.freeze(poseTime(chainPlayer.emote()));
         }
         wait++;
-        if(wait<(matrix?48:35)) return;
+        // New UI shots sample the live previews after about 0.8 s in the screen.
+        if (wait < (ui != null ? setupTick + 17 : matrix ? 48 : 35)) return;
         Path path=directory().resolve(shot.name()+".png");
-        if(!queued) { Files.createDirectories(path.getParent());Files.deleteIfExists(path);pending=path;queued=true;return; }
-        if(!Files.isRegularFile(path)) { if(wait>300) throw new IllegalStateException("Screenshot not written: "+path);return; }
+        if (!queued) {
+            written = null;
+            screenshot(shot.name());
+            queued = true;
+            return;
+        }
+        if (!path.equals(written) || !Files.isRegularFile(path)) {
+            if (wait > 300) throw new IllegalStateException("Screenshot not written: " + path);
+            return;
+        }
+        if (shot.name().startsWith("ui-")) {
+            LoggerFactory.getLogger("quarkos_emotes").info("UI_SHOT_DONE {}", shot.name());
+        }
+        if (ui != null) restoreUiFixture();
         if(shot.name().equals("emote-backflip")||shot.name().equals("emote-spin"))
             check(shot.name()+"-full-turn",shot.id().endsWith(":backflip")?bodyX>150:bodyY>150,
                     "rendered_body_degrees_x="+bodyX+"_y="+bodyY);
@@ -331,6 +399,43 @@ public final class ClientHarness {
         }
         index++;wait=0;ticks=0;
     }
+    private static void seedUiFixture() {
+        var config = EmoteConfig.get();
+        var slots = new ArrayList<String>(EmoteConfig.SLOT_COUNT);
+        for (int slot = 0; slot < EmoteConfig.SLOT_COUNT; slot++) slots.add(config.slot(slot));
+        uiFixture = new UiFixture(config.favorites, slots, config.wheelFavoritesOnly);
+        config.favorites = new ArrayList<>(List.of("quarkos_emotes:wave", "quarkos_emotes:thinking", "quarkos_emotes:clap"));
+        config.wheelFavoritesOnly = false;
+        for (int slot = 0; slot < EmoteConfig.SLOT_COUNT; slot++) config.setSlot(slot, "");
+        config.setSlot(0, "quarkos_emotes:wave");
+        config.setSlot(2, "quarkos_emotes:bigdance");
+    }
+
+    private static void restoreUiFixture() {
+        if (uiFixture == null) return;
+        var config = EmoteConfig.get();
+        config.favorites = uiFixture.favorites();
+        config.wheelFavoritesOnly = uiFixture.favoritesOnly();
+        for (int slot = 0; slot < EmoteConfig.SLOT_COUNT; slot++) config.setSlot(slot, uiFixture.slots().get(slot));
+        uiFixture = null;
+    }
+
+    private static void typeSearch(EmoteWheelScreen screen) {
+        EditBox search = (EditBox) screen.children().stream().filter(EditBox.class::isInstance).findFirst().orElseThrow();
+        screen.setFocused(search);
+        for (char letter : "da".toCharArray()) {
+            //? if >=1.21.11 {
+            screen.charTyped(new net.minecraft.client.input.CharacterEvent(letter, 0));
+            //?} else {
+            /*screen.charTyped(letter, 0);
+            *///?}
+        }
+        if (!search.getValue().equals("da") || !"quarkos_emotes:bigdance".equals(EmotesClient.selected)) {
+            throw new IllegalStateException("UI search did not select Big Dance for da");
+        }
+        screen.setFocused(null);
+    }
+
     public static Path screenshot(String name) throws java.io.IOException {
         Path path=directory().resolve(name+".png");Files.createDirectories(path.getParent());Files.deleteIfExists(path);pending=path;return path;
     }
@@ -352,13 +457,15 @@ public final class ClientHarness {
                 width,height,guiScale,mc.getWindow().getGuiScaledWidth(),mc.getWindow().getGuiScaledHeight(),mc.getWindow().getGuiScale(),target.width,target.height);
     }
     private static void cursor(Minecraft mc,double logicalX,double logicalY) {
-        double scale=mc.getWindow().getGuiScale();
+        var window = mc.getWindow();
+        double x = logicalX * window.getScreenWidth() / window.getGuiScaledWidth();
+        double y = logicalY * window.getScreenHeight() / window.getGuiScaledHeight();
         //? if >=1.21.11 {
-        long handle=mc.getWindow().handle();
+        long handle=window.handle();
         //?} else {
-        /*long handle=mc.getWindow().getWindow();
+        /*long handle=window.getWindow();
         *///?}
-        org.lwjgl.glfw.GLFW.glfwSetCursorPos(handle,logicalX*scale,logicalY*scale);
+        org.lwjgl.glfw.GLFW.glfwSetCursorPos(handle,x,y);
     }
     /** At GameRenderer TAIL: includes deferred GUI and the fully rendered world. */
     /** Hide HUD, chat and toasts for a store or lifecycle frame. */
@@ -385,7 +492,14 @@ public final class ClientHarness {
         *///?}
     }
     private static void write(Path path,NativeImage img) {
-        try { img.writeToFile(path); }catch(Exception e) { LoggerFactory.getLogger("quarkos_emotes").error("Screenshot failed",e); }finally {img.close();}
+        try {
+            img.writeToFile(path);
+            written = path;
+        } catch (Exception e) {
+            LoggerFactory.getLogger("quarkos_emotes").error("Screenshot failed", e);
+        } finally {
+            img.close();
+        }
     }
     private static void pressFirst(Screen screen) { for(var child:screen.children())if(child instanceof Button b){press(b);return;} }
     private static void press(Button b) {

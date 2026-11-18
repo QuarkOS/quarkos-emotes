@@ -3,6 +3,7 @@ package dev.quarkos.emotes;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.quarkos.emotes.animation.*;
 import dev.quarkos.emotes.config.*;
+import dev.quarkos.emotes.config.ui.EmotePreview;
 import dev.quarkos.emotes.network.PlaybackState;
 import net.minecraft.client.*;
 import net.minecraft.client.resources.sounds.*;
@@ -22,6 +23,8 @@ public final class EmotesClient {
     public static final KeyMapping OPEN=new KeyMapping("key.quarkos_emotes.open",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_B,CATEGORY);
     public static final KeyMapping[] FAVORITES=java.util.stream.IntStream.range(1,5).mapToObj(i->
             new KeyMapping("key.quarkos_emotes.favorite_"+i,InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_UNKNOWN,CATEGORY)).toArray(KeyMapping[]::new);
+    public static final KeyMapping[] QUICK_SLOTS=java.util.stream.IntStream.rangeClosed(1,EmoteConfig.SLOT_COUNT).mapToObj(i->
+            new KeyMapping("key.quarkos_emotes.slot_"+i,InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_UNKNOWN,CATEGORY)).toArray(KeyMapping[]::new);
     private static final Map<UUID,EmotePlayer> PLAYERS=new HashMap<>();
     private static final Map<UUID,Object> ENTITIES=new HashMap<>();
     private record RemoteCue(String id,int elapsed) {}
@@ -42,16 +45,16 @@ public final class EmotesClient {
     private static net.minecraft.world.phys.Vec3 lastPosition;
     private static java.util.function.Function<String,Boolean> sender=id->false;
     public static String selected="";
-    /** Extra yaw degrees applied while the config preview is on screen. Zero during gameplay. */
-    public static float previewOrbit;
     public static void sender(java.util.function.Function<String,Boolean> s) { sender=s; }
     public static EmotePlayer player(UUID id) { return PLAYERS.get(id); }
     public static EmotePlayer entity(int id) {
+        var preview=EmotePreview.playback(id);
+        if(preview!=null)return preview;
         Minecraft mc=Minecraft.getInstance();
         if(mc.level==null) return null;
         var entity=mc.level.getEntity(id);
         if(entity==null || (!EmoteConfig.get().showOthers&&entity!=mc.player)) return null;
-        if(entity==mc.player&&!(mc.screen instanceof EmoteConfigScreen)&&mc.options.getCameraType().isFirstPerson()&&EmoteConfig.get().firstPerson==EmoteConfig.FirstPerson.NONE) return null;
+        if(entity==mc.player&&mc.options.getCameraType().isFirstPerson()&&EmoteConfig.get().firstPerson==EmoteConfig.FirstPerson.NONE) return null;
         return PLAYERS.get(entity.getUUID());
     }
     public static void receive(UUID uuid,String id) { receive(uuid,id,0); }
@@ -143,16 +146,19 @@ public final class EmotesClient {
         if(!ready) { ready=true; EmoteConfig.load(mc.gameDirectory.toPath()); }
         synchronizeWorld(mc);
         flushPending(mc);
-        if(!(mc.screen instanceof EmoteConfigScreen)) previewOrbit=0;
-        if(mc.screen!=null&&!ClientProofHooks.visual()) {if(!(mc.screen instanceof EmoteConfigScreen))stop();restoreCamera(mc);}
+        if(mc.screen!=null&&!ClientProofHooks.visual()) {stop();restoreCamera(mc);}
         if(mc.player!=null&&!mc.player.isAlive())restoreCamera(mc);
         if(mc.player!=null) {
             boolean activated=false;
             while(OPEN.consumeClick()) {
-                if(mc.screen==null&&!activated) {stop();mc.setScreen(new EmoteWheelScreen());activated=true;}
+                if(mc.screen==null&&!activated) {stop();mc.setScreen(new EmoteWheelScreen(OPEN.isDown()));activated=true;}
             }
             for(int i=0;i<FAVORITES.length;i++) while(FAVORITES[i].consumeClick()) {
                 if(mc.screen==null&&!activated&&i<EmoteConfig.get().favorites.size()) {play(EmoteConfig.get().favorites.get(i));activated=true;}
+            }
+            for(int i=0;i<QUICK_SLOTS.length;i++) while(QUICK_SLOTS[i].consumeClick()) {
+                String id=EmoteConfig.get().slot(i);
+                if(mc.screen==null&&!activated&&EmoteResources.REGISTRY.get(id)!=null) {play(id);activated=true;}
             }
             var local=PLAYERS.get(mc.player.getUUID());
             if(local!=null&&!ClientProofHooks.visual()) {

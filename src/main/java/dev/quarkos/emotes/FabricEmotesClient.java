@@ -12,6 +12,7 @@ public final class FabricEmotesClient implements ClientModInitializer {
     @Override public void onInitializeClient() {
         KeyBindingHelper.registerKeyBinding(EmotesClient.OPEN);
         for(var key:EmotesClient.FAVORITES) KeyBindingHelper.registerKeyBinding(key);
+        for(var key:EmotesClient.QUICK_SLOTS) KeyBindingHelper.registerKeyBinding(key);
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
             @Override public Identifier getFabricId() { return Identifier.fromNamespaceAndPath("quarkos_emotes","emotes"); }
             @Override public void onResourceManagerReload(ResourceManager manager) { new EmoteResources().onResourceManagerReload(manager); }
