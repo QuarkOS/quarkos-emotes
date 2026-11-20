@@ -8,6 +8,11 @@
     "Emilio Schwaiger / QuarkOS"
   ],
   "contributors": ["Blockato (emote animation)"],
+  "contact": {
+    "homepage": "https://github.com/QuarkOS/quarkos-emotes",
+    "sources": "https://github.com/QuarkOS/quarkos-emotes",
+    "issues": "https://github.com/QuarkOS/quarkos-emotes/issues"
+  },
   "license": "MIT",
   "icon": "assets/quarkos_emotes/icon.png",
   "environment": "*",

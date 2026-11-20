@@ -1,6 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "[1,)"
 license = "MIT"
+issueTrackerURL = "https://github.com/QuarkOS/quarkos-emotes/issues"
 
 [[mods]]
 modId = "quarkos_emotes"
@@ -9,6 +10,7 @@ displayName = "QuarkOS Emotes"
 authors = "Emilio Schwaiger / QuarkOS"
 credits = "Blockato (emote animation)"
 description = '''Resource-pack emotes with a radial wheel and optional multiplayer sharing.'''
+displayURL = "https://github.com/QuarkOS/quarkos-emotes"
 displayTest = "IGNORE_ALL_VERSION"
 logoFile = "assets/quarkos_emotes/icon.png"
 
