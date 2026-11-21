@@ -34,7 +34,7 @@ public final class GeometryProps {
         LOCAL_TEXTURES.add(id);
         Minecraft.getInstance().execute(()-> {
             //? if >=1.21.11 {
-            var texture=new DynamicTexture(()->"QuarkOS emote prop "+relative,pixels);
+            var texture=new DynamicTexture(()->"Quark's emote prop "+relative,pixels);
             //?} else {
             /*var texture=new DynamicTexture(pixels);
             *///?}
