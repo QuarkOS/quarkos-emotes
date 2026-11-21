@@ -1,4 +1,4 @@
-# QuarkOS Emotes animation format
+# Quark's Emotes animation format
 
 The runtime reads numeric Blockbench Bedrock animations (`format_version`
 `1.8.0`), without executable Molang. There are exactly **42 built-ins**:

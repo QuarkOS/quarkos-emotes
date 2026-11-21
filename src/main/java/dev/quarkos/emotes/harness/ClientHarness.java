@@ -182,7 +182,7 @@ public final class ClientHarness {
             return;
         }
         var ui=create.getUiState(); if(ui.getNormalPresetList().isEmpty()) return;
-        ui.setGameMode(WorldCreationUiState.SelectedGameMode.CREATIVE);ui.setAllowCommands(true);ui.setName("QuarkOS Emotes harness");
+        ui.setGameMode(WorldCreationUiState.SelectedGameMode.CREATIVE);ui.setAllowCommands(true);ui.setName("Quark's Emotes harness");
         ui.getNormalPresetList().stream().filter(e->e.preset().is(WorldPresets.FLAT)).findFirst().ifPresent(ui::setWorldType);
         for(var child:create.children()) if(child instanceof Button b&&b.getMessage().getString().equals(Component.translatable("selectWorld.create").getString())) {
             press(b);stage=Stage.WORLD;ticks=0;return;

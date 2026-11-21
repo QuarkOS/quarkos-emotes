@@ -1,4 +1,4 @@
-# QuarkOS Emotes — status (2026-11-10, v1.0.0)
+# Quark's Emotes — status (2026-11-10, v1.0.0)
 
 Nothing has been published to Modrinth, CurseForge, or GitHub. The version in
 `stonecutter.properties.toml` is `1.0.0`. Values still required before a public

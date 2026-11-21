@@ -1,8 +1,8 @@
 {
-  "key.categories.quarkos_emotes": "QuarkOS Emotes",
-  "key.category.quarkos_emotes.emotes": "QuarkOS Emotes",
+  "key.categories.quarkos_emotes": "Quark's Emotes",
+  "key.category.quarkos_emotes.emotes": "Quark's Emotes",
   "key.quarkos_emotes.open": "Open emote wheel",
-  "screen.quarkos_emotes.wheel": "QuarkOS Emotes",
+  "screen.quarkos_emotes.wheel": "Quark's Emotes",
   "screen.quarkos_emotes.config": "Emote settings",
   "text.quarkos_emotes.search": "Search emotes…",
   "text.quarkos_emotes.favorites": "Favourites",

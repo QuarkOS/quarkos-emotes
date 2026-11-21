@@ -1,4 +1,4 @@
-# QuarkOS Emotes
+# Quark's Emotes
 
 Editable player emotes for Minecraft by **Emilio Schwaiger / QuarkOS**,
 with 41 built-in emotes by Blockbench animator **Blockato**.

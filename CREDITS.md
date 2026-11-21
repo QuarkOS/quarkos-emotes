@@ -17,7 +17,7 @@ another game's choreography. The sword texture is Blockato's provisional
 32×32 flat-colour artwork; final visual approval remains on the release checklist.
 
 **Stretch**, the remaining original emote, and accompanying implementation and
-documentation were authored for QuarkOS Emotes with Codex assistance.
+documentation were authored for Quark's Emotes with Codex assistance.
 
 The project uses the [MIT license](LICENSE), copyright 2026 Emilio Schwaiger.
 The build layout was adapted from the sister QuarkOS Cosmetics project.

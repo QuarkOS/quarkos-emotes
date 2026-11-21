@@ -1,4 +1,4 @@
-# QuarkOS Emotes
+# Quark's Emotes
 
 Wave, react, dance and pose with **42 built-in emotes**: **41 by Blockato**
 plus Stretch, our original. Created by **Emilio Schwaiger / QuarkOS**.

@@ -6,7 +6,7 @@ issueTrackerURL = "https://github.com/QuarkOS/quarkos-emotes/issues"
 [[mods]]
 modId = "quarkos_emotes"
 version = "${version}"
-displayName = "QuarkOS Emotes"
+displayName = "Quark's Emotes"
 authors = "Emilio Schwaiger / QuarkOS"
 credits = "Blockato (emote animation)"
 description = '''Resource-pack emotes with a radial wheel and optional multiplayer sharing.'''

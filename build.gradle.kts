@@ -73,9 +73,9 @@ val writePack = tasks.register("writePackMeta") {
     val out = layout.buildDirectory.file("generated/pack/pack.mcmeta")
     outputs.file(out)
     val meta = when {
-        sc.current.parsed >= "26.3" -> """{"pack":{"description":"QuarkOS Emotes","min_format":[97,1],"max_format":[97,1]}}"""
-        sc.current.parsed >= "1.21.9" -> """{"pack":{"description":"QuarkOS Emotes","min_format":[75,0],"max_format":[75,0]}}"""
-        else -> """{"pack":{"description":"QuarkOS Emotes","pack_format":34}}"""
+        sc.current.parsed >= "26.3" -> """{"pack":{"description":"Quark's Emotes","min_format":[97,1],"max_format":[97,1]}}"""
+        sc.current.parsed >= "1.21.9" -> """{"pack":{"description":"Quark's Emotes","min_format":[75,0],"max_format":[75,0]}}"""
+        else -> """{"pack":{"description":"Quark's Emotes","pack_format":34}}"""
     }
     inputs.property("packMetadata", meta)
     doLast {

@@ -5,7 +5,7 @@ that any loader/game combination has passed its build or client checks.
 
 | Field | Value |
 | --- | --- |
-| Name | QuarkOS Emotes |
+| Name | Quark's Emotes |
 | Mod ID | `quarkos_emotes` |
 | Version | `1.0.0` |
 | Author | Emilio Schwaiger / QuarkOS |

@@ -1,4 +1,4 @@
-# QuarkOS Emotes — STATUS (times Europe/Vienna)
+# Quark's Emotes — STATUS (times Europe/Vienna)
 
 Current verification, the multiplayer matrix, lifecycle proof, and store assets
 are in [docs/STATUS.md](docs/STATUS.md). Values still required before a public

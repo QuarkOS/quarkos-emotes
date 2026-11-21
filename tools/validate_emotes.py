@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the QuarkOS Emotes Bedrock subset using only Python's standard library."""
+"""Validate the Quark's Emotes Bedrock subset using only Python's standard library."""
 
 from __future__ import annotations
 

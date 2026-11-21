@@ -1,4 +1,4 @@
-# QuarkOS Emotes design
+# Quark's Emotes design
 
 The shared source tree is processed by Stonecutter for Fabric and Forge on
 Minecraft 1.21.1 and 1.21.11. Loader bootstraps register keys, resource reloads,

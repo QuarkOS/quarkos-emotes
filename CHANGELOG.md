@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Renamed to "Quark's Emotes" (controls menu, emote wheel and mod list). Nothing else changed.
+
 ## 1.0.0 — release preparation
 
 - Refresh the entire final animator delivery: 47/47 runtime files match bytes

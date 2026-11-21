@@ -1,6 +1,6 @@
 mod.id = "quarkos_emotes"
-mod.name = "QuarkOS Emotes"
-mod.version = "1.0.0"
+mod.name = "Quark's Emotes"
+mod.version = "1.0.1"
 mod.group = "dev.quarkos"
 
 deps.fabric_loader = "0.19.5"
