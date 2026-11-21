@@ -51,7 +51,7 @@ if (minecraftVersion == "forge" || forgeNode == null) {
     apply(plugin = "java")
     apply(plugin = "net.minecraftforge.gradle")
 
-    version = "1.0.1+$minecraftVersion"
+    version = "1.0.2+$minecraftVersion"
     base.archivesName.set("quarkos_emotes-forge")
     group = "dev.quarkos"
 
@@ -186,7 +186,7 @@ if (minecraftVersion == "forge" || forgeNode == null) {
     tasks.named<ProcessResources>("processResources") {
         dependsOn(writeForgePack, writeForgeManifest)
         val props = mapOf(
-            "version" to "1.0.1+$minecraftVersion",
+            "version" to "1.0.2+$minecraftVersion",
             "forge_dep" to node.forgeDep,
             "minecraft" to minecraftVersion,
         )
